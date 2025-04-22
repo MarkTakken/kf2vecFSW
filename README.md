@@ -185,7 +185,7 @@ python main.py train_model_set -input_dir ../toy_example/train_tree_kf -true_dis
 ```
 python main.py query -input_dir ../toy_example/test_kf  -model ../toy_example/train_tree_models -classes ../toy_example/test_results  -o ../toy_example/test_results
 ```
-
+<!--
 To test wrapper functions on toy dataset:
 ------------
 While located in code directory
@@ -197,5 +197,6 @@ python main.py build_library -input_dir ../toy_example/train_tree_fna -output_di
 ```
 python main.py process_query_data -input_dir ../toy_example/test_fna -output_dir ../toy_example/combo_results   -classifier_model ../toy_example/combo_models -distance_model ../toy_example/combo_models
 ```
+-->
 
 
