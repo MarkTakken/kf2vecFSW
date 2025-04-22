@@ -185,6 +185,14 @@ python main.py train_model_set -input_dir ../toy_example/train_tree_kf -true_dis
 ```
 python main.py query -input_dir ../toy_example/test_kf  -model ../toy_example/train_tree_models -classes ../toy_example/test_results  -o ../toy_example/test_results
 ```
+To test with chunked input on toy dataset (updating):
+------------
+While located in code directory
+
+1. To generate chunked input for backbone training sequences (this step takes a couple of minutes, run with -p 20 to speed up):
+```
+python main.py get_chunks -input_dir ../toy_example/train_tree_fna -output_dir ../toy_example/train_tree_chunks
+```
 <!--
 To test wrapper functions on toy dataset:
 ------------
