@@ -2,6 +2,10 @@
 # kf2vec
 <!-- k-mer frequency to distance-->
 
+This repository contains the code of the software.
+
+Data and scripts are available in https://github.com/noraracht/kf2vec_data.
+
 INSTALLATION
 -----------
 
