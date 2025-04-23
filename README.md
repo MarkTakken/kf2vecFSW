@@ -187,12 +187,14 @@ python main.py train_model_set -input_dir ../toy_example/train_tree_kf -true_dis
 ```
 python main.py query -input_dir ../toy_example/test_kf  -model ../toy_example/train_tree_models -classes ../toy_example/test_results  -o ../toy_example/test_results
 ```
-To scale the backbone phylogeny by a factor before splitting into subtrees. This step is OPTIONAL but might be helpful:
+
+To scale the backbone phylogeny by a factor before splitting into subtrees: 
 ------------
+This step is OPTIONAL, but might be helpful in practice
 ```
 python main.py scale_tree -tree ../toy_example/train_tree_newick/train_tree.nwk  -factor 100
 ```
-This step scales all branch lengths in backbone phylogeny by a specific factor (x100 in the example above). Software adds suffix `rFACTOR` (_r100.0) to the original phylogeny filename and saves the output into the same directory. 
+This step scales all branch lengths in backbone phylogeny by a specific factor (x100 in the example above). Software adds the suffix `rFACTOR` (_r100.0) to the original phylogeny filename and saves the output into the same directory. 
 
 To test with chunked input on toy dataset (updating):
 ------------
