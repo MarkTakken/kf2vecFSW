@@ -28,7 +28,7 @@ Below, we assume you are in the `kf2d` directory of the repository. This will be
 
 COMMANDS
 -----------
-
+<!--
 Combination function to perform backbone preprocessing and training classifier and distance models 
 ------------
 It's a wraper function that consequtively runs computation of k-mer frequences for backbone sequences, splits backbone tree into subtrees and produce corresponding true distance matrices as well as trains classifier and distance models. 
@@ -62,7 +62,7 @@ All output files from this command are stored in **$OUTPUT_DIR**.
 
 Output includes results of classification and distance computation. Thus `classes.out` tab delimited file contains information about each query sequence, assigned subtree number and probability values for top as well as all other classes. Distance values are summarized in as query per backbone sequences distance matrix for each subtree.
 
-
+-->
 
 ## Main commands
 
