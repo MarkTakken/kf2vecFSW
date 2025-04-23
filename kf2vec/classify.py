@@ -46,7 +46,7 @@ features_scaler = 1e4
 
 
 
-def classify_func(features_folder, feature_input, model_file, seed, classification_result):
+def classify_func(features_folder, feature_input_file_list, model_file, seed, classification_result):
 
     # Seed
     torch.manual_seed(seed)
@@ -85,16 +85,17 @@ def classify_func(features_folder, feature_input, model_file, seed, classificati
 
     #######################################################################
     # Prepare dataset
+    """
     logging.info('\n==> Preparing Data...\n')
-
 
     feature_input = feature_input.iloc[:,:]*features_scaler
     input_size = np.shape(feature_input)[1]
     logging.info("Dimensions of feature matrix rows: {}, cols: {}".format(np.shape(feature_input)[0], np.shape(feature_input)[1]))
+    """
 
     # #######################################################################
     # Get names
-    backbone_names = feature_input.index.tolist()
+    # backbone_names = feature_input.index.tolist()
 
     #######################################################################
     # Model
@@ -118,6 +119,19 @@ def classify_func(features_folder, feature_input, model_file, seed, classificati
 
 
     logging.info('Number of Classes: {}'.format(class_count))
+
+    #######################################################################
+    # Prepare input data
+    logging.info('\n==> Preparing Input Data...\n')
+
+    classes_fname = "classes.out"
+    if os.path.isfile(os.path.join(classification_result, classes_fname)):
+        os.remove(os.path.join(classification_result, classes_fname))
+
+
+    classes_header = ["genome", "top_class", "top_p"] + [str(x) for x in list(range(class_count))]
+    df_classes_header = pd.DataFrame(columns=classes_header)
+    df_classes_header.to_csv(os.path.join(classification_result, classes_fname), index=False, sep='\t', mode = "a")
 
     """
     #######################################################################
@@ -144,46 +158,97 @@ def classify_func(features_folder, feature_input, model_file, seed, classificati
     logging.info('\n==> Compute model output...\n')
 
     # Compute model output
-
     model.eval()
 
     with torch.no_grad():
-        model_class = model(torch.from_numpy(feature_input.values).float())
+
+        for feature_input_file in feature_input_file_list:
+
+            feature_input = pd.read_csv(feature_input_file, index_col=None, header=None, sep=',')
+            feature_input.set_index(0, inplace=True)
+            feature_input = feature_input.iloc[:, :] * features_scaler
 
 
-    ps = torch.exp(model_class)
-    top_p, top_class = ps.topk(1, dim=1)
+            # Apply mask. Deducing k value
+            if input_size == 7812:  # k = 7
+                my_alphabet_kmers = pd.read_csv("test_kmers_7_sorted", sep=" ", header=None, names=["kmer"])
+                logging.info('Masking: {}, k={}'.format("True", 7))
 
-    # Get names
-    backbone_names = feature_input.index.tolist()
-    #print(backbone_names)
+                my_mask = list((my_alphabet_kmers["kmer"].apply(set).apply(len) > 2))
+                feature_input = feature_input.iloc[:, [z for z in range(0, len(my_mask)) if my_mask[z] == True]]
+
+            elif input_size == 1884:  # k = 6
+                my_alphabet_kmers = pd.read_csv("test_kmers_6_sorted", sep=" ", header=None, names=["kmer"])
+                logging.info('Masking: {}, k={}'.format("True", 6))
+
+                my_mask = list((my_alphabet_kmers["kmer"].apply(set).apply(len) > 2))
+                feature_input = feature_input.iloc[:, [z for z in range(0, len(my_mask)) if my_mask[z] == True]]
+
+            elif input_size == 12:  # k = 3
+                my_alphabet_kmers = pd.read_csv("vocab_generator_k3C_fin.fa", sep=" ", header=None, names=["kmer"])
+                logging.info('Masking: {}, k={}'.format("True", 3))
+
+                my_mask = list((my_alphabet_kmers["kmer"].apply(set).apply(len) > 2))
+                feature_input = feature_input.iloc[:, [z for z in range(0, len(my_mask)) if my_mask[z] == True]]
+
+            elif input_size == 88:  # k = 4
+                my_alphabet_kmers = pd.read_csv("vocab_generator_k4C_fin.fa", sep=" ", header=None, names=["kmer"])
+                logging.info('Masking: {}, k={}'.format("True", 4))
+
+                my_mask = list((my_alphabet_kmers["kmer"].apply(set).apply(len) > 2))
+                feature_input = feature_input.iloc[:, [z for z in range(0, len(my_mask)) if my_mask[z] == True]]
+
+            elif input_size == 420:  # k = 5
+                my_alphabet_kmers = pd.read_csv("vocab_generator_k5C_fin.fa", sep=" ", header=None, names=["kmer"])
+                logging.info('Masking: {}, k={}'.format("True", 5))
+
+                my_mask = list((my_alphabet_kmers["kmer"].apply(set).apply(len) > 2))
+                feature_input = feature_input.iloc[:, [z for z in range(0, len(my_mask)) if my_mask[z] == True]]
+
+            elif input_size == 32116:  # k = 8
+                my_alphabet_kmers = pd.read_csv("vocab_generator_k8C_fin.fa", sep=" ", header=None, names=["kmer"])
+                logging.info('Masking: {}, k={}'.format("True", 8))
+
+                my_mask = list((my_alphabet_kmers["kmer"].apply(set).apply(len) > 2))
+                feature_input = feature_input.iloc[:, [z for z in range(0, len(my_mask)) if my_mask[z] == True]]
+
+            elif input_size == 129540:  # k = 9
+                my_alphabet_kmers = pd.read_csv("vocab_generator_k9C_fin.fa", sep=" ", header=None, names=["kmer"])
+                logging.info('Masking: {}, k={}'.format("True", 9))
+
+                my_mask = list((my_alphabet_kmers["kmer"].apply(set).apply(len) > 2))
+                feature_input = feature_input.iloc[:, [z for z in range(0, len(my_mask)) if my_mask[z] == True]]
 
 
-    #######################################################################
-    # Compute distance matrix for entire set
 
-    # Detach gradient and convert to numpy
-    df_classes = pd.DataFrame(np.hstack((top_class.detach().numpy(), top_p.detach().numpy(), ps.detach().numpy())))
+            model_class = model(torch.from_numpy(feature_input.values).float())
 
 
-    # Attach species names
+            ps = torch.exp(model_class)
+            top_p, top_class = ps.topk(1, dim=1)
 
-    df_classes.columns = ["top_class", "top_p"] + [str(x) for x in list(range(class_count))]
-    df_classes.insert(loc=0, column='genome', value=backbone_names)
-
-
-    #######################################################################
-    # Generate Apples input
+            # Get names
+            backbone_names = feature_input.index.tolist()
+            #print(backbone_names)
 
 
+            #######################################################################
+            # Compute distance matrix for single query
 
-    # Write to file
-    logging.info("Dimensions of class output rows:{} cols:{}".format(len(df_classes), len(df_classes.columns)))
-    df_classes.to_csv(os.path.join(classification_result, "classes.out"), index=False, sep='\t')
+            # Detach gradient and convert to numpy
+            df_classes = pd.DataFrame(np.hstack((top_class.detach().numpy(), top_p.detach().numpy(), ps.detach().numpy())))
 
 
+            # Attach species names
+            df_classes.columns = ["top_class", "top_p"] + [str(x) for x in list(range(class_count))]
+            df_classes.insert(loc=0, column='genome', value=backbone_names)
 
-    #######################################################################
+
+            #######################################################################
+            # Write to file (append to  classes.out file)
+            df_classes.to_csv(os.path.join(classification_result, classes_fname), index=False, sep='\t', mode = "a", header = False)
+
+            #######################################################################
 
 
     logging.info('\n==> Classification Completed!\n')

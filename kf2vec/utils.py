@@ -150,7 +150,6 @@ def sort_df(df_pdm, howToSortDict):
     #order = [o[0] for o in order]
 
 
-
     #print(order)
 
     # print(howToSortDict)
@@ -257,6 +256,18 @@ def pairwise_true_dist(labels, ddf2):
     return torch.from_numpy(r)
 
 
+def pairwise_true_dist_2rows(labels, ddf2):
+    """
+    Subsets numpy array of true distances using indices from labels
+    """
+    r = ddf2[np.ix_(list(labels), list(labels))]
+
+    r = np.repeat(np.repeat(r, 2, axis=0), 2, axis=1)
+
+
+    return torch.from_numpy(r)
+
+
 def select_indices(labels, ddf2):
     """
     Subsets torch tensor array using indices from labels
@@ -342,3 +353,102 @@ def construct_input_dataframe(li):
     frame.set_index(frame.columns[0], inplace=True)
 
     return frame
+
+
+def save_trained_model(model_name, input_size, hidden_size_fc1, embedding_size, state_dict, model_filepath, model_filename ):
+    """
+    Function to save model hyperparameters and state dictionary
+    """
+    state = {
+        'model_name': "NeuralNet",
+        'model_input_size': input_size,
+        'model_hidden_size_fc1': hidden_size_fc1,
+        'model_embedding_size': embedding_size,
+        'state_dict': state_dict,
+        # 'optimizer': optimizer.state_dict()
+    }
+
+    torch.save(state, (os.path.join(model_filepath, model_filename)))
+
+def compute_embeddings(outputs, backbone_names):
+    """
+    Function to compute and output embeddings and distortions
+    """
+
+    # Detach gradient and convert to numpy
+    train_dist = pairwise_train_dist(outputs)
+    pairwise_outputs3 = torch.square(train_dist)
+
+    # Round distances < 1e10-6 to 0 so apples can handle such values
+    pairwise_outputs3 = torch.where(pairwise_outputs3 < 1.0e-6, torch.tensor(0, dtype=pairwise_outputs3.dtype),
+                                    pairwise_outputs3)
+
+    df_outputs = pd.DataFrame(pairwise_outputs3.detach().numpy())
+    df_embeddings = pd.DataFrame(outputs.detach().numpy())
+
+    # Attach species names
+    df_outputs.columns = backbone_names
+    df_outputs.insert(loc=0, column='', value=backbone_names)
+    df_embeddings.insert(loc=0, column='', value=backbone_names)
+
+    return  df_outputs, df_embeddings
+
+
+    file_path = p[0]
+    input_size = p[1]
+    return pd.read_csv(file_path, sep=',', index_col=0, header=None, dtype={**{0:str},**{i:np.uint16 for i in range(1,input_size+1)}}, low_memory=True)
+
+
+def my_read_csv_chunk(p):
+    file_path = p[0]
+    input_size = p[1]
+    return pd.read_csv(file_path, sep=',', index_col=0, header=None, dtype={**{0:str},**{i:np.uint16 for i in range(1,input_size+1)}}, low_memory=True)
+
+
+def retain(value):
+    return value
+
+
+def cap_to_unit8(value):
+    return min(int(float(value)), 255)
+
+
+def my_read_csv_chunk_capped(p):
+    file_path = p[0]
+    input_size = p[1]
+
+    #conv = dict((i, cap_to_unit8) for i in range(1, input_size + 1))
+    conv = {**{0: retain}, **{i: cap_to_unit8 for i in range(1, input_size + 1)}}
+    try:
+        r = pd.read_csv(file_path, sep=',', index_col=0, header=None, converters=conv, low_memory=True).apply(pd.to_numeric, downcast='integer', errors = 'coerce').fillna(0).astype('uint8')
+        return r
+        
+    #print(r.info(memory_usage="deep"))
+    #return pd.read_csv(file_path, sep=',', index_col=0, header=None, converters=conv, low_memory=True).apply(pd.to_numeric, downcast='integer', errors = 'coerce').fillna(0).astype('uint8')
+    except Exception as e:
+        print(file_path)
+        print(e)
+
+
+
+
+
+def my_read_csv(file_path):
+    return pd.read_csv(file_path, index_col=0, header=None, sep=',')
+
+
+def process_file(filepath):
+    try:
+        with open(filepath, 'r') as file:
+            lines = [line.strip() for line in file]
+
+        file_data = []
+        for line in lines:
+            filename, ext = os.path.splitext(line)
+            #file_data.append((filename, ext))
+            file_data.append(filename)
+
+        return file_data
+
+    except FileNotFoundError:
+        return f"Error: File not found at {filepath}"

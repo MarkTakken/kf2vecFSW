@@ -48,7 +48,7 @@ features_scaler = 1e4
 
 
 
-def query_func(features_folder, features_csv, model_file, classes, seed, output_folder):
+def query_func(features_folder, features_csv_file_list, model_file, classes, seed, output_folder, remap):
 
     # Seed
     torch.manual_seed(seed)
@@ -89,8 +89,13 @@ def query_func(features_folder, features_csv, model_file, classes, seed, output_
     logging.info('\n==> Querying...\n')
 
 
-    #classification_df = pd.read_csv(os.path.join(os.getcwd(), classes), sep="\t", header=0)
-    classification_df = pd.read_csv(os.path.join(classes, "classes.out") , sep="\t", header=0)
+    classes_fname = "classes.out"
+    classification_df_all = pd.read_csv(os.path.join(classes, classes_fname) , sep="\t", header=0)
+
+
+    # Intersect class information and input file list
+    features_csv_basename = [os.path.basename(q).split(".kf")[0] for q in features_csv_file_list]
+    classification_df = classification_df_all.loc[classification_df_all.genome.isin(features_csv_basename)]
 
     classification_df["top_class"] = classification_df["top_class"].astype(int)
     class_count = classification_df.top_class.unique()
@@ -100,7 +105,6 @@ def query_func(features_folder, features_csv, model_file, classes, seed, output_
 
 
     current_class_ids = {}
-
 
     for c in class_count:
 
@@ -113,6 +117,7 @@ def query_func(features_folder, features_csv, model_file, classes, seed, output_
 
         #######################################################################
         # Prepare dataset
+        """
         logging.info('\n==> Preparing Data...\n')
 
         # Subset feature input for a given clade
@@ -121,12 +126,9 @@ def query_func(features_folder, features_csv, model_file, classes, seed, output_
         input_size = np.shape(feature_input)[1]
 
         logging.info("Dimensions of feature matrix rows: {}, cols: {}".format(np.shape(feature_input)[0], np.shape(feature_input)[1]))
-
+        """
         ########################################################################
-        # Get names
-        query_names = feature_input.index.tolist()
 
-        #######################################################################
         # Model
         logging.info('\n==> Building model...\n')
 
@@ -150,46 +152,88 @@ def query_func(features_folder, features_csv, model_file, classes, seed, output_
         logging.info('\n==> Compute model output...\n')
 
 
+        # Read embeddings
+        df_embeddings = pd.read_csv(os.path.join(model_file, 'embeddings_subtree_{}.csv'.format(c)), sep="\t",
+                                    header=None, index_col=0)
+        embeddings_tensor = torch.from_numpy(df_embeddings.values).float()
+
+        # Get backbone names
+        backbone_names = df_embeddings.index.tolist()
+
+
         # Compute model output
         model.eval()
 
         with torch.no_grad():
-            outputs = model(torch.from_numpy(feature_input.values).float())
-        #logging.info(outputs)
+
+            for features_csv_file in current_class_ids[c]:
+
+                feature_input = pd.read_csv(os.path.join(*[features_folder, features_csv_file + ".kf"]), index_col=None, header=None, sep=',')
+                feature_input.set_index(0, inplace=True)
+                feature_input = feature_input.iloc[:, :] * features_scaler
+
+                # Get names
+                query_names = feature_input.index.tolist()
+
+                # Comput model outputs
+                outputs = model(torch.from_numpy(feature_input.values).float())
+
+                # Compute pairwise distance matrix
+                pairwise_outputs = torch.cdist(outputs, embeddings_tensor, p=2, compute_mode='donot_use_mm_for_euclid_dist')
+                pairwise_outputs2 = torch.square(pairwise_outputs)
+                pairwise_outputs3 = torch.div(pairwise_outputs2, 1.0) # NEED TO FIX BUT GOOD FOR Current TEST
+
+                # Round distances < 1e10-6 to 0 so apples can handle such values
+                pairwise_outputs3 = torch.where(pairwise_outputs3 < 1.0e-6, torch.tensor(0, dtype=pairwise_outputs3.dtype),
+                                                pairwise_outputs3)
+
+                #######################################################################
+                # Compute distance matrix for single sample
+
+                # Detach gradient and convert to numpy
+                df_outputs = pd.DataFrame(pairwise_outputs3.detach().numpy())
+
+                # Attach species names
+                df_outputs.columns = backbone_names
+                df_outputs.insert(loc=0, column='', value=query_names)
+
+                # Compute query embeddings
+                query_embeddings = pd.DataFrame(outputs.detach().numpy())
+                query_embeddings.insert(loc=0, column='', value=query_names)
+
+                #######################################################################
+                # Generate Apples input
+
+                # Write to file
+                #logging.info("Dimensions of output matrix rows:{} cols:{}".format(len(df_outputs), len(df_outputs.columns)-1))
+                if remap:
+
+                    new_folder_name = "original_csv"
+                    if not os.path.exists(os.path.join(output_folder,  new_folder_name)):
+                        os.makedirs(os.path.join(output_folder,  new_folder_name))
+
+                    df_outputs.to_csv(os.path.join(output_folder,  new_folder_name, 'apples_input_di_mtrx_query_{}.csv'.format(features_csv_file)), index=False, sep='\t')
+                    query_embeddings.to_csv(os.path.join(output_folder,  new_folder_name, 'embedding_query_{}.emb'.format(features_csv_file)), index=False, sep='\t', header=False)
 
 
-        # Read embeddings
-        df_embeddings = pd.read_csv(os.path.join(model_file, 'embeddings_subtree_{}.csv'.format(c)), sep="\t", header=None, index_col = 0)
-        backbone_names = df_embeddings.index.tolist()
+                    my_map_df = pd.read_csv(remap, sep="\t", header=0)
+                    my_map_dict = pd.Series(my_map_df.new_label.values, index=my_map_df.label).to_dict()
 
 
-        # Compute pairwise distance matrix
-        embeddings_tensor = torch.from_numpy(df_embeddings.values).float()
-        pairwise_outputs = torch.cdist(outputs, embeddings_tensor, p=2, compute_mode='donot_use_mm_for_euclid_dist')
-        pairwise_outputs2 = torch.square(pairwise_outputs)
-        pairwise_outputs3 = torch.div(pairwise_outputs2, 1.0) # NEED TO FIX BUT GOOD FOR Current TEST
+                    df_outputs.iloc[0, 0] = my_map_dict[query_names[0]]
+                    query_embeddings.iloc[0, 0] = my_map_dict[query_names[0]]
 
-        # Round distances < 1e10-6 to 0 so apples can handle such values
-        pairwise_outputs3 = torch.where(pairwise_outputs3 < 1.0e-6, torch.tensor(0, dtype=pairwise_outputs3.dtype),
-                                        pairwise_outputs3)
+                    df_outputs.to_csv(
+                        os.path.join(output_folder, 'apples_input_di_mtrx_query_{}.csv'.format(features_csv_file)),
+                        index=False, sep='\t')
+                    query_embeddings.to_csv(
+                        os.path.join(output_folder, 'embedding_query_{}.emb'.format(features_csv_file)), index=False,
+                        sep='\t', header=False)
 
-        #######################################################################
-        # Compute distance matrix for entire set
+                else:
 
-        # Detach gradient and convert to numpy
-        df_outputs = pd.DataFrame(pairwise_outputs3.detach().numpy())
-
-        # Attach species names
-        df_outputs.columns = backbone_names
-        df_outputs.insert(loc=0, column='', value=query_names)
-
-        #######################################################################
-        # Generate Apples input
-
-        # Write to file
-        logging.info("Dimensions of output matrix rows:{} cols:{}".format(len(df_outputs), len(df_outputs.columns)-1))
-        df_outputs.to_csv(os.path.join(output_folder, 'apples_input_di_mtrx_query_subtree_{}.csv'.format(c)), index=False, sep='\t')
-
+                    df_outputs.to_csv(os.path.join(output_folder, 'apples_input_di_mtrx_query_{}.csv'.format(features_csv_file)), index=False, sep='\t')
+                    query_embeddings.to_csv(os.path.join(output_folder, 'embedding_query_{}.emb'.format(features_csv_file)), index=False, sep='\t', header=False)
 
         logging.info('\n==> Computation is completed for subtree {}!\n'.format(c))
 
@@ -198,12 +242,12 @@ def query_func(features_folder, features_csv, model_file, classes, seed, output_
         logging.info('Time: {:02d}:{:02d}:{:02d}'.format(hrs, _min, sec))
 
 
-
     logging.info('\n==> Computation Completed!\n'.format(c))
 
     time_elapsed = time.time() - since
     hrs, _min, sec = hms(time_elapsed)
     logging.info('Time: {:02d}:{:02d}:{:02d}'.format(hrs, _min, sec))
+
 
 
 

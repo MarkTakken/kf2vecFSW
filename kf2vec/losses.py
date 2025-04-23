@@ -55,6 +55,68 @@ class Loss(nn.Module):
         return loss
 
 
+class Loss_chunks(nn.Module):
+
+    def __init__(self):
+        super(Loss_chunks, self).__init__()
+
+    def my_mse_loss(self, model_dist, true_dist):
+        assert model_dist.shape == true_dist.shape
+        #print('Train tensor')
+        #print(model_dist)
+        #print('True tensor')
+        #print(true_dist)
+        #weight = 1 / (true_dist + 1e-6)  # ** 2   square_root_fm weighting
+        weight = 1 / (true_dist + 1000) #** 2   square_root_fm weighting
+        #print(weight)
+        #print('Weights')
+        #print(weight)
+        #print(model_dist - true_dist)
+
+
+
+        true_dist = torch.sqrt(true_dist) # need to multiply by 100 and then take sqrt
+        #print(true_dist)
+        #print(torch.max(model_dist - true_dist))
+        #print(torch.min(model_dist - true_dist))
+
+        #weight = 1 / (true_dist + 1e-8) ** 2  # square_root_fm weighting
+        #loss = ((model_dist - true_dist) ** 2 * weight).mean()
+        v = ((model_dist - true_dist) ** 2 * weight)
+        # print ("Model_dist")
+        # print(model_dist)
+        # print ("True dist")
+        # print(true_dist)
+        # print ("Diff")
+        # print(model_dist - true_dist)
+        # print((model_dist - true_dist)**2)
+        # print(v)
+
+
+        # fixed value 10^4
+
+        # pd.DataFrame(model_dist.detach().numpy()).to_csv('model_dist.csv', index=False, header=False, sep=',')
+        # pd.DataFrame(true_dist.detach().numpy()).to_csv('true_dist.csv', index=False, header=False, sep=',')
+
+        #print('loss')
+        #loss = v.sum()/(torch.numel(v)-torch.numel(torch.diag(v, 0)))  # computes loss without diameter elements
+        #loss = v.sum()/model_dist.size(dim=0)
+
+        loss = v
+
+        #print(loss)
+        #print((model_dist - true_dist) ** 2 * weight)
+        #loss = ((model_dist/(true_dist+ 1e-8)-1) ** 2).mean() #exclude the diameter
+
+        return loss.mean()
+
+
+    def forward(self, model_dist, true_dist):
+        loss = self.my_mse_loss(model_dist, true_dist)
+
+        return loss
+
+
 class Loss_for_contigs(nn.Module):
 
     def __init__(self):

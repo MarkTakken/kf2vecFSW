@@ -36,6 +36,7 @@ from sklearn.metrics import accuracy_score
 
 import sys
 import os
+import shutil
 import glob
 import subprocess
 from subprocess import call, check_output, STDOUT
@@ -54,11 +55,17 @@ from train_classifier_model import *
 from classify import *
 from train_model_set import *
 from query import *
+from query_last import *
+from query_consec import *
+
+from train_model_set_chunks import *
+from train_classifier_model_chunks import *
 
 default_k_len = 7
 min_k_len = 3
 max_k_len = 10
 default_subtree_sz = 850
+default_multiplier = 100
 
 hidden_size_fc1 = 2048
 embedding_size = 1024
@@ -71,10 +78,13 @@ learning_rate = 0.00001     # 1e-5
 learning_rate_min = 3e-6    # 3e-6
 learning_rate_decay = 2000
 
-seed = 16
+seed = 28
+
+chunk_sz = 10000 # Minimum chunk size
+chunk_cnt_thr = 5 # Minimum number of chunks to preserve genome in a dataset.
 
 
-__version__ = 'kf2d 1.0.20'
+__version__ = 'kf2d 1.0.62'
 
 
 # def print_hi(name):
@@ -149,6 +159,8 @@ def divide_tree(args):
 
 def get_frequencies(args):
 
+    print('\n==> Starting k-mer counting for {}\n'.format(args.input_dir))
+
     # Check if input directory exist
     if os.path.exists(args.input_dir):
         pass
@@ -165,6 +177,8 @@ def get_frequencies(args):
 
 
     # Making a list of sample names
+    #print('\n==> Making a list of sample names...\n')
+
     formats = ['.fq', '.fastq', '.fa', '.fna', '.fasta']
     files_names = [f for f in os.listdir(args.input_dir)
                    if True in (fnmatch.fnmatch(f, '*' + form) for form in formats)]
@@ -193,19 +207,27 @@ def get_frequencies(args):
 
     # Compute kmer counts per file
     for i in range (0, len(files_names)):
-        print(files_names[i])
+
+
+        #print('\n==> Start processing. Sample: {}'.format(files_names[i]))
+        #print(files_names[i])
 
         # Run jellyfish
         f1 = os.path.join(args.output_dir, "{}.{}".format(samples_names[i],"jf"))
-        call(["jellyfish", "count", "-m", str(args.k), "-s", "100M", "-t", str(args.p),
+        subprocess.run(["jellyfish", "count", "-m", str(args.k), "-s", "100M", "-t", str(args.p),
                "-C", os.path.join( args.input_dir, files_names[i]) ,"-o", f1],
              stderr=open(os.devnull, 'w'))
+
+        # Match filename to the pattern of jellyfish adds suffix to the f1 output
+        pattern = os.path.join(f1 + "*")
+        f1 = glob.glob(pattern)[0]
 
         f2 = os.path.join(args.output_dir, "{}.{}".format(samples_names[i], "dump"))
         with open(f2, "w") as outfile:
             subprocess.run(["jellyfish", "dump", "-c", f1], stdout=outfile)
 
         # Read into dataframe
+        #print('>>> Reading counts. Sample: {}'.format(files_names[i]))
         my_current_kmers = pd.read_csv(f2, sep = " ", header = None, names = ["kmer", "counts"])
 
 
@@ -216,18 +238,23 @@ def get_frequencies(args):
 
         # Add pseudocounts if flag is on
         if args.pseudocount:
-            my_merged_counts["counts"] =  my_merged_counts["counts"] + 0.5
+            print('>>> Adding pseudocounts. Sample: {}'.format(files_names[i]))
+            my_merged_counts["counts"] = my_merged_counts["counts"] + 0.5
+
         else:
             pass
 
+        # if raw counts are not requested frequencies are normalized to 1
+        if not args.raw_cnt:
+            print('>>> Normalizing. Sample: {}'.format(files_names[i]))
+            my_merged_counts["counts"] = my_merged_counts["counts"] / my_merged_counts["counts"].sum()
 
-        # Normalize frequencies to 1
-        my_merged_counts["counts"] = my_merged_counts["counts"]/my_merged_counts["counts"].sum()
         my_merged_counts["counts"] = my_merged_counts["counts"].astype(str)
         my_merged_list = my_merged_counts["counts"].to_list()
 
 
         # Output into file
+        #print('>>> Preparing output. Sample: {}'.format(files_names[i]))
         f3 = os.path.join(args.output_dir, "{}.{}".format(samples_names[i], "kf"))
         my_output = ",".join(my_merged_list)
 
@@ -237,16 +264,29 @@ def get_frequencies(args):
             f.write(my_output)
             f.write("\n")
 
+
         # Clean up
-        os.remove(f1)
-        os.remove(f2)
+        try:
+            os.remove(f1)
+        except:
+            print('\n==> .jf is not present. Sample: {}'.format(files_names[i]))
+
+
+        try:
+            os.remove(f2)
+        except:
+            print('\n==> .dump is not present. Sample: {}'.format(files_names[i]))
+
+
+    print('\n==> Done processing {}'.format(args.input_dir))
 
 
 def train_classifier(args):
 
-    # Concetenate kmer frequencies into single dataframe
+    # Concatenate kmer frequencies into single dataframe
     all_files = glob.glob(os.path.join(args.input_dir, "*.kf"))
 
+    """
     li = []
 
     for filename in all_files:
@@ -255,20 +295,20 @@ def train_classifier(args):
 
 
     frame = pd.concat(li, axis=0, ignore_index=True)
-    frame.set_index(0, inplace=True)
+    """
+
+    #frame.set_index(0, inplace=True)
 
     # Concatenate inputs into single dataframe
     #frame = construct_input_dataframe(li)
 
-    train_classifier_model_func(args.input_dir, frame, args.subtrees, args.e, args.hidden_sz, args.batch_sz, args.lr, args.lr_min, args.lr_decay, args.seed, args.o)
+    train_classifier_model_func(args.input_dir, all_files, args.subtrees, args.e, args.hidden_sz, args.batch_sz, args.lr, args.lr_min, args.lr_decay, args.seed, args.mask, args.o)
 
 
 def classify(args):
 
-    # Concetenate kmer frequencies into single dataframe
+    # Read kmer frequencies filenames into a list
     all_files = glob.glob(os.path.join(args.input_dir, "*.kf"))
-
-    li = []
 
     # # Delete previous log file if exist
     # try:
@@ -276,18 +316,33 @@ def classify(args):
     # except OSError:
     #     pass
 
-    for filename in all_files:
-        df = pd.read_csv(filename, index_col=None, header=None, sep=',')
+    classify_func(args.input_dir, all_files, args.model, args.seed, args.o)
 
-        li.append(df)
 
-    frame = pd.concat(li, axis=0, ignore_index=True)
-    frame.set_index(0, inplace=True)
+def scale_tree(args):
 
-    # Concatenate inputs into single dataframe
-    # frame = construct_input_dataframe(li)
+    # Read tree file
+    try:
+        tree = treeswift.read_tree_newick(args.tree)
+    except:
+        print("No such file '{}'".format(args.tree), file=sys.stderr)
+        exit(0)
 
-    classify_func(args.input_dir, frame, args.model, args.seed, args.o)
+
+    # Split path and filename
+    head_tail = os.path.split(args.tree)
+    filename, file_extension = os.path.splitext(os.path.basename(args.tree))
+
+
+    # Scale branches by 100
+    print("Original diameter: {}".format(tree.diameter()))
+    tree.scale_edges(args.factor)
+    print("Scaled diameter: {}".format(tree.diameter()))
+
+    new_tree_name = "{}_r{}{}".format(filename, args.factor, file_extension)
+    # Output scaled tree
+    tree.write_tree_newick(os.path.join(head_tail[0], new_tree_name))
+
 
 
 def get_distances(args):
@@ -305,7 +360,7 @@ def get_distances(args):
     tree_name = os.path.splitext(os.path.basename(args.tree))[0]
 
     # Scale branches by 100
-    tree.scale_edges(100)
+    #tree.scale_edges(100)
 
     # Compute distance matrix for a full tree and convert into dataframe
     if args.mode == "full_only" or args.mode == "hybrid":
@@ -322,8 +377,6 @@ def get_distances(args):
         M = tree.distance_matrix(leaf_labels=True)
         df = pd.DataFrame.from_dict(M, orient='index').fillna(0)
         df.to_csv(os.path.join(head_tail[0], '{}_full.di_mtrx'.format(tree_name)), index=True, sep='\t')
-
-
 
 
 
@@ -360,32 +413,35 @@ def get_distances(args):
 
 def train_model_set(args):
 
+
     # Concatenate kmer frequencies into single dataframe
+    print("Running train_model_set")
     all_files = glob.glob(os.path.join(args.input_dir, "*.kf"))
 
-    li = []
 
-    for filename in all_files:
-        df = pd.read_csv(filename, index_col=None, header=None, sep= ',')
-        li.append(df)
+    # li = []
+    #
+    # for filename in all_files:
+    #     df = pd.read_csv(filename, index_col=None, header=None, sep= ',')
+    #     li.append(df)
+    #
+    #
+    # frame = pd.concat(li, axis=0, ignore_index=True)
+    # frame.set_index(0, inplace=True)
+    #
+    # # Concatenate inputs into single dataframe
+    # # frame = construct_input_dataframe(li)
 
 
-    frame = pd.concat(li, axis=0, ignore_index=True)
-    frame.set_index(0, inplace=True)
-
-    # Concatenate inputs into single dataframe
-    # frame = construct_input_dataframe(li)
-
-
-    train_model_set_func(args.input_dir, frame, args.subtrees, args.true_dist, args.e, args.hidden_sz, args.embed_sz, args.batch_sz, args.lr, args.lr_min, args.lr_decay, args.seed, args.o)
+    train_model_set_func(args.input_dir, all_files, args.subtrees, args.true_dist, args.e, args.hidden_sz, args.embed_sz, args.batch_sz, args.lr, args.lr_min, args.lr_decay, args.clade, args.seed, args.o, args.test_set, args.save_interval)
 
 
 
 def query(args):
 
-    # Concatenate kmer frequencies into single dataframe
+    # Read kmer frequencies filenames into a list
     all_files = glob.glob(os.path.join(args.input_dir, "*.kf"))
-
+    """
     li = []
 
     for filename in all_files:
@@ -397,8 +453,21 @@ def query(args):
 
     # Concatenate inputs into single dataframe
     # frame = construct_input_dataframe(li)
+    """
 
-    query_func(args.input_dir, frame, args.model, args.classes, args.seed, args.o)
+    query_func(args.input_dir, all_files, args.model, args.classes, args.seed, args.o, args.remap)
+
+   # # Query last model if exist
+   #  try:
+   #      query_func_last(args.input_dir, all_files, args.model, args.classes, args.seed, args.o)
+   #  except:
+   #      pass
+   #
+   #  # Query consec model if exist
+   #  try:
+   #      query_func_consec(args.input_dir, all_files, args.model, args.classes, args.seed, args.o)
+   #  except:
+   #      pass
 
 
 
@@ -487,6 +556,321 @@ def process_query_data(args):
     print('\n==> Query processing step is completed!\n')
 
 
+def get_chunks(args):
+
+    since = time.time()
+
+
+    # Check if input directory exist
+    if os.path.exists(args.input_dir):
+        pass
+    else:
+        print("No such directory '{}'".format(args.input_dir), file=sys.stderr)
+        exit(0)
+
+    # Check if output directory exist
+    if os.path.exists(args.output_dir):
+        pass
+    else:
+        print("No such directory '{}'".format(args.output_dir), file=sys.stderr)
+        exit(0)
+
+
+    level = logging.INFO
+    format = '%(message)s'
+    handlers = [logging.FileHandler(os.path.join(args.output_dir, 'get_chunks_{}.log'.format(os.path.basename(os.path.normpath(args.input_dir)))), 'w+'),
+                logging.StreamHandler()]
+
+    # logging.basicConfig(level=logging.NOTSET, format='%(asctime)s | %(levelname)s: %(message)s', handlers=handlers)
+
+    logging.basicConfig(level=level, format=format, handlers=handlers)
+    # logging.info('Hey, this is working!')
+
+    time_elapsed = time.time() - since
+    hrs, _min, sec = hms(time_elapsed)
+    logging.info('\n==> Making a list of sample names. Time: {:02d}:{:02d}:{:02d}\n'.format(hrs, _min, sec))
+
+
+    # Making a list of sample names
+    formats = ['.fq', '.fastq', '.fa', '.fna', '.fasta']
+    files_names = [f for f in os.listdir(args.input_dir)
+                   if True in (fnmatch.fnmatch(f, '*' + form) for form in formats)]
+    samples_names = [f.rsplit('.f', 1)[0] for f in files_names]
+
+
+    time_elapsed = time.time() - since
+    hrs, _min, sec = hms(time_elapsed)
+    logging.info('\n==> Start processing samples. Time: {:02d}:{:02d}:{:02d}\n'.format(hrs, _min, sec))
+
+    # Process single sample from beginning to the end
+    for i in range(0, len(files_names)):
+
+        logging.info('\n==> Start processing. Sample: {}'.format(files_names[i]))
+
+        # Create tmp directory in output folder
+        ndr1 = "{}_tmp".format(samples_names[i])
+        if not os.path.exists(os.path.join(args.output_dir, ndr1)):
+            os.makedirs(os.path.join(args.output_dir, ndr1))
+
+        # Create contigs directory in output folder
+        ndr2 = "{}_contigs".format(samples_names[i])
+        if not os.path.exists(os.path.join(args.output_dir, ndr2)):
+            os.makedirs(os.path.join(args.output_dir, ndr2))
+
+        # Create chunks directory in output folder
+        ndr3 = "{}_chunks".format(samples_names[i])
+        if not os.path.exists(os.path.join(args.output_dir, ndr3)):
+            os.makedirs(os.path.join(args.output_dir, ndr3))
+
+        # Create kf directory in output folder
+        ndr4 = "{}_kf".format(samples_names[i])
+        if not os.path.exists(os.path.join(args.output_dir, ndr4)):
+            os.makedirs(os.path.join(args.output_dir, ndr4))
+
+
+        # Convert multiline fasta into single line fasta (linearizing files)
+        # Better practice would be to write or use programs that can handle wrapped fasta
+        logging.info('>>> Formatting to single line. Sample: {}'.format(files_names[i]))
+
+        f_single_line = os.path.join(*[args.output_dir, ndr1, "{}.{}".format(samples_names[i], "sline")])
+        with open(f_single_line, "w") as outfile:
+            subprocess.run(["seqtk", "seq", "-l", "0", os.path.join(args.input_dir, files_names[i])], stdout=outfile)
+
+
+
+        # Replace multiple occurrences of N or n with single N, exclude N chars in sequence name:
+        logging.info('>>> Replacing stretches of N. Sample: {}'.format(files_names[i]))
+
+        f0 = os.path.join(*[args.output_dir, ndr1, "{}.{}".format(samples_names[i], "short")])
+        find_txt_command = ["awk", '{!/^(>)/ && gsub(/[N|n]+/,"N")}1', f_single_line]
+        with open(f0, 'w') as my_out_file:
+            subprocess.run(find_txt_command, stdout=my_out_file, shell=False)
+
+
+
+        # Filter out contigs below threshold length
+        logging.info('>>> Filtering contigs below threshold {}. Sample: {}'.format(str(chunk_sz), files_names[i]))
+
+        f1 = os.path.join(*[args.output_dir, ndr1, "{}.{}".format(samples_names[i], "filt")])
+        # cmd = "reformat.sh -Xmx2g in=" + f0 + " out=" + f1 + " minlength=" + str(chunk_sz) + " overwrite=true"
+        # subprocess.call(cmd, shell=True)
+
+        subprocess.run(["seqkit", "seq", "-m", str(chunk_sz), f0, "-o", f1, "-g", "-v"], stderr=open(os.devnull, 'w'))
+
+        # with open(f1, 'w') as my_out_file:
+        #     subprocess.run(["seqkit", "seq", "-m", str(chunk_sz), f0, "-g", "-v"], stdout=my_out_file, shell=False)
+
+
+
+        # Check if .filt file is empty (no contigs > threshold). If empty skip to the next sample.
+        with open(f1) as file_obj:
+            # read first character
+            first_char = file_obj.read(1)
+            if not first_char:
+
+                time_elapsed = time.time() - since
+                hrs, _min, sec = hms(time_elapsed)
+                logging.info( '\n==> Excluded {}. No contigs above threshold length. Time: {:02d}:{:02d}:{:02d}\n'.format(files_names[i],hrs, _min, sec))
+
+                # Clean up tmp folders
+                """
+                shutil.rmtree(os.path.join(*[args.output_dir, ndr1]))
+                shutil.rmtree(os.path.join(*[args.output_dir, ndr2]))
+                shutil.rmtree(os.path.join(*[args.output_dir, ndr3]))
+                shutil.rmtree(os.path.join(*[args.output_dir, ndr4]))
+                """
+                # Skip to the next sample
+                continue
+
+
+
+        # Split sample into contigs
+        logging.info('>>> Splitting into contigs. Sample: {}'.format(files_names[i]))
+        subprocess.run(["seqkit", "split", "--by-id", f1, "--out-dir", os.path.join(*[args.output_dir, ndr2])],
+             stderr=open(os.devnull, 'w'))
+
+
+        # Making a list of sample names for contig files
+        logging.info('>>> Getting contig ids. Sample: {}'.format(files_names[i]))
+
+        formats = ['.filt']
+        files_names2 = [f for f in os.listdir(os.path.join(*[args.output_dir, ndr2]))
+                       if True in (fnmatch.fnmatch(f, '*' + form) for form in formats)]
+        samples_names2 = [f.rsplit('.filt', 1)[0] for f in files_names2]
+
+
+
+        # Compute statistics per contig
+        logging.info('>>> Computing contig statistics. Sample: {}'.format(files_names[i]))
+
+        ordered_chunks_fnames = []
+        for j in range(0, len(files_names2)):
+
+            # print(files_names2[j])
+            # print(samples_names2[j])
+
+            # Run seqtk to compute contig length
+            comp_stdout = check_output(["seqtk", "comp", os.path.join(*[args.output_dir, ndr2, files_names2[j]])],  stderr=STDOUT, universal_newlines=True)
+            reads_stat = comp_stdout.split('\n')
+            total_length = int(reads_stat[0].split("\t")[1])
+
+            # Compute overlap and split contigs into chunks
+            total_chunks =  math.ceil(total_length/chunk_sz)
+            if total_chunks != 1:
+                ovrlap = int(math.ceil((total_chunks*chunk_sz - total_length) / (total_chunks - 1)))
+            else:
+                ovrlap = 0
+            step = chunk_sz - ovrlap
+            # print(total_length)
+            # print(total_chunks)
+            # print(ovrlap)
+            # print(step)
+            f2 = os.path.join(os.path.join(*[args.output_dir, ndr2, "{}.{}".format(samples_names2[j], "fna")]))
+            subprocess.run(["seqkit", "sliding", os.path.join(*[args.output_dir, ndr2, files_names2[j]]), "--step", str(step), "--window", str(chunk_sz), "--out-file", f2 ],
+                 stderr=open(os.devnull, 'w'))
+
+            # Save order of sliding chunks
+            comp_stdout2 = check_output(["seqkit", "seq", "-n", f2],
+                                       stderr=STDOUT, universal_newlines=True)
+            reads_stat2 = comp_stdout2.split('\n') # Need to verify if works with simple chunk name
+            ordered_chunks_fnames.extend(reads_stat2)
+
+            # Drop empty chunk names
+            ordered_chunks_fnames = [q for q in ordered_chunks_fnames if q!=""]
+
+            # Split contig into chunks
+            # subprocess.run(["seqkit", "split", "--by-id", f2, "--out-dir", os.path.join(*[args.output_dir, ndr3])],
+            #                stderr=open(os.devnull, 'w'))
+
+            # Split contig into chunks (using bbtools)
+            cmd2 = "demuxbyname.sh -Xmx2g in=" + f2 + " out=" + os.path.join(*[args.output_dir, ndr3, ]) + "/" + samples_names2[j] + ".part_%.fna" + " header"
+            subprocess.call(cmd2, shell=True)
+
+        # Drop sample with number of chunks below threshold
+        if len(ordered_chunks_fnames) < chunk_cnt_thr:
+            time_elapsed = time.time() - since
+            hrs, _min, sec = hms(time_elapsed)
+            logging.info(
+                '\n==> Excluded {}. {} chunks is too low. {} is required. Time: {:02d}:{:02d}:{:02d}\n'.format(
+                    files_names[i], len(ordered_chunks_fnames), chunk_cnt_thr, hrs, _min, sec))
+
+            # Clean up tmp folders
+
+            shutil.rmtree(os.path.join(*[args.output_dir, ndr1]))
+            shutil.rmtree(os.path.join(*[args.output_dir, ndr2]))
+            shutil.rmtree(os.path.join(*[args.output_dir, ndr3]))
+            shutil.rmtree(os.path.join(*[args.output_dir, ndr4]))
+
+            # Skip to the next sample
+            continue
+
+            #logging.info('\n==> Done processing. Sample: {}'.format(files_names[i]))
+
+        time_elapsed = time.time() - since
+        hrs, _min, sec = hms(time_elapsed)
+        logging.info('\n==> Done chunk processing for {}. Time: {:02d}:{:02d}:{:02d}\n'.format(files_names[i], hrs, _min, sec))
+
+
+        # Compute kmer frequences for a given sample
+        orig_input_dir = args.input_dir # Save original values
+        orig_output_dir = args.output_dir # Save original values
+
+        args.input_dir = os.path.join(*[args.output_dir, ndr3])
+        args.output_dir = os.path.join(*[args.output_dir, ndr4])
+
+        args.k = args.k
+        args.p = args.p
+        args.pseudocount = args.pseudocount
+        args.raw_cnt = True
+
+        get_frequencies(args)
+
+        time_elapsed = time.time() - since
+        hrs, _min, sec = hms(time_elapsed)
+        logging.info('\n==> Done computing k-mer frequences for {}. Time: {:02d}:{:02d}:{:02d}\n'.format(files_names[i], hrs, _min, sec))
+
+
+        # Assign original input and directories
+        args.input_dir = orig_input_dir
+        args.output_dir = orig_output_dir
+
+
+        # Summarize kmer frequences into single file
+        # Use with seqkit split
+        # my_order_list = ["{}.part_{}.part_{}.kf".format(samples_names[i], w.split("_sliding")[0], w) for w in ordered_chunks_fnames]
+        # my_order_list = [t.replace("sliding:", "sliding__") for t in  my_order_list]
+
+        # Use with demuxbyname cmd
+        my_order_list = ["{}.part_{}.part_{}.kf".format(samples_names[i], w.split("_sliding")[0], w) for w in
+                         ordered_chunks_fnames]
+        #my_order_list = ["{}.kf".format(w) for w in ordered_chunks_fnames]
+
+
+
+        f3 = os.path.join(os.path.join(*[args.output_dir, "{}.{}".format(samples_names[i], "kf")]))
+        # with open(f3, 'w') as outfile:
+        #     for fname in my_order_list:
+        #         with open(os.path.join(*[ args.output_dir, ndr4, fname])) as infile:
+        #             for line in infile:
+        #                 outfile.write(line)
+
+        with open(f3, 'wb') as wfd:
+            for fname in my_order_list:
+                with open(os.path.join(*[ args.output_dir, ndr4, fname]), 'rb') as fd:
+                    shutil.copyfileobj(fd, wfd)
+
+
+
+        # Clean up tmp folders
+
+        shutil.rmtree(os.path.join(*[args.output_dir, ndr1]))
+        shutil.rmtree(os.path.join(*[args.output_dir, ndr2]))
+        shutil.rmtree(os.path.join(*[args.output_dir, ndr3]))
+        shutil.rmtree(os.path.join(*[args.output_dir, ndr4]))
+
+
+    time_elapsed = time.time() - since
+    hrs, _min, sec = hms(time_elapsed)
+    logging.info('\n==> Done getting chunks. Time: {:02d}:{:02d}:{:02d}\n'.format(hrs, _min, sec))
+
+
+
+
+def train_model_set_chunks(args):
+
+
+
+    # Concatenate kmer frequencies into single dataframe
+    print("Running train_model_set_chunks")
+    all_files = glob.glob(os.path.join(args.input_dir, "*.kf"))
+
+
+    # li = []
+    #
+    # for filename in all_files:
+    #     df = pd.read_csv(filename, index_col=None, header=None, sep= ',')
+    #     li.append(df)
+    #
+    #
+    # frame = pd.concat(li, axis=0, ignore_index=True)
+    # frame.set_index(0, inplace=True)
+    #
+    # # Concatenate inputs into single dataframe
+    # # frame = construct_input_dataframe(li)
+    #
+    #
+    train_model_set_chunks_func(args.input_dir, args.input_dir_fullgenomes, all_files, args.subtrees, args.true_dist, args.e, args.hidden_sz, args.embed_sz, args.batch_sz, args.lr, args.lr_min, args.lr_decay, args.clade, args.seed, args.cap, args.o)
+
+
+def train_classifier_chunks(args):
+
+    # Concatenate kmer frequencies into single dataframe
+    print("Running train_classifier_chunks")
+    all_files = glob.glob(os.path.join(args.input_dir, "*.kf"))
+
+
+    train_classifier_model_chunks_func(args.input_dir, args.input_dir_fullgenomes, all_files, args.subtrees, args.e, args.hidden_sz, args.batch_sz, args.lr, args.lr_min, args.lr_decay, args.seed, args.mask, args.cap, args.o)
+
 
 
 def main():
@@ -496,17 +880,22 @@ def main():
     parser.add_argument('-v', '--version', action='version', help='print the current version', version='{}'.format(__version__))
     # parser.add_argument('--debug', action='store_true', help='Print the traceback when an exception is raised')
     subparsers = parser.add_subparsers(title='commands',
-                                       description='get_frequencies        Extract k-mer frequency from a reference genome-skims or assemblies\n'
-                                                   'divide_tree            Divides input phylogeny into subtrees\n'
-                                                   'get_distances          Compute distance matrices\n'
-                                                   'train_classifier       Train classifier model based on backbone subtrees\n'
-                                                   'classify               Classifies query samples using previously trained classifier model\n'
+                                       description='get_frequencies          Extract k-mer frequency from a reference genome-skims or assemblies\n'
+                                                   'divide_tree              Divides input phylogeny into subtrees\n'
+                                                   'scale_tree               Multiplies all edges in the tree by multiplier\n'
+                                                   'get_distances            Compute distance matrices\n'
+                                                   'train_classifier         Train classifier model based on backbone subtrees\n'
+                                                   'classify                 Classifies query samples using previously trained classifier model\n'
                                                    # 'train_model     Performs correction of subsampled distance matrices obtained for reference\n'
-                                                   'train_model_set        Trains all models for subtrees consecutively\n'
-                                                   'query                  Query subtree models\n'
+                                                   'train_model_set          Trains all models for subtrees consecutively\n'
+                                                   'query                    Query subtree models\n'
                                                    # 'genome-skims or assemblies'
-                                                   'build_library          Wrapper command to preprocess backbone sequences and phylogeny to train classifier and distance models\n'
-                                                   'process_query_data     Wrapper command to preprocess query sequences, classify and compute distances to backbone species\n'
+                                                   # 'build_library            Wrapper command to preprocess backbone sequences and phylogeny to train classifier and distance models\n'
+                                                   # 'process_query_data       Wrapper command to preprocess query sequences, classify and compute distances to backbone species\n'
+
+                                                   'get_chunks               Extract chunks from reference assemblies\n'
+                                                   'train_model_set_chunks   Trains all models for subtrees consecutively using chunked input\n'
+                                                   'train_classifier_chunks  Train classifier model based on backbone subtrees (genomes split into chunks)\n'
                                        ,
                                        help='Run kf2d {commands} [-h] for additional help',
                                        dest='{commands}')
@@ -515,10 +904,13 @@ def main():
     # Get_frequencies command subparser
 
     ### To invoke
+    ##### To debug:
+    ##### jellyfish count -m 7 -s 100M  ../toy_example/test_fna/G000196015.fna -o ../toy_example/test_kf/G000196015.jf; jellyfish  dump -c ../toy_example/test_kf/G000196015.jf
+
     ### python main.py get_frequencies -input_dir /Users/nora/PycharmProjects/test_freq -output_dir /Users/nora/PycharmProjects/test_freq
     ### python main.py get_frequencies -input_dir /Users/nora/PycharmProjects/test_freq -pseudocount
 
-    ### python main.py get_frequencies - input_dir.. / toy_example / train_tree_fna - output_dir.. / toy_example / train_tree_kf
+    ### python main.py get_frequencies - input_dir ../toy_example/train_tree_fna - output_dir ../toy_example/train_tree_kf
     ### python main.py get_frequencies -input_dir ../toy_example/test_fna -output_dir ../toy_example/test_kf
 
     parser_freq = subparsers.add_parser('get_frequencies',
@@ -534,6 +926,8 @@ def main():
                                  'Default for this machine: {0}'.format(mp.cpu_count()), metavar='P')
     parser_freq.add_argument('-pseudocount', action='store_true',
                            help='Computes k-mer counts with 0.5 pseudocount added to each frequency value')
+    parser_freq.add_argument('-raw_cnt', action='store_true',
+                             help='Computes raw k-mer counts without normalization')
     parser_freq.set_defaults(func=get_frequencies)
 
 
@@ -552,6 +946,22 @@ def main():
     parser_div.set_defaults(func=divide_tree)
 
 
+    # Scale_tree command subparser
+
+    ### To invoke
+    ### python main.py scale_tree -tree /Users/nora/PycharmProjects/test_tree.nwk  -factor 100
+    ### python main.py scale_tree -tree ../toy_example/train_tree_newick/train_tree.nwk  -factor 100
+
+
+    parser_scale = subparsers.add_parser('scale_tree',
+                                       description='Scales all edges in the tree by multiplier.')
+    parser_scale.add_argument('-tree', help='Input phylogeny (a .newick/.nwk format)')
+    parser_scale.add_argument('-factor', type=float, default=default_multiplier, help='Multiplier. ' +
+                                                                                'Default: {}'.format(
+                                                                                    default_multiplier))
+    parser_scale.set_defaults(func=scale_tree)
+
+
     # Get_distances command subparser
 
     ### To invoke
@@ -559,6 +969,7 @@ def main():
 
     ### python main.py get_distances -tree ../toy_example/train_tree_newick/train_tree.nwk  -subtrees  ../toy_example/train_tree_newick/train_tree.subtrees -mode subtrees_only
 
+    ### SINGLE CLADE: python main.py get_distances -tree ../toy_example/train_tree_newick_single_clade/train_tree.nwk  -subtrees  ../toy_example/train_tree_newick_single_clade/train_tree_single_clade.subtrees -mode subtrees_only
     parser_distances = subparsers.add_parser('get_distances',
                                              description='Computes distance matrices')
     parser_distances.add_argument('-tree', help='Input phylogeny (a .newick/.nwk format)', required=True)
@@ -601,6 +1012,8 @@ def main():
                                                                                       'Default: {}'.format(learning_rate_decay))
     parser_trclas.add_argument('-seed', type=int, default=seed, help='Random seed. ' +
                                                                             'Default: {}'.format(seed))
+    parser_trclas.add_argument('-mask', action='store_true',
+                             help='Masks low complexity k-mers in input features (reduces input dimension')
     parser_trclas.add_argument('-o',
                                help='Model output path')
 
@@ -635,12 +1048,15 @@ def main():
     ### To invoke
     ### python main.py train_model_set -input_dir /Users/nora/PycharmProjects/train_tree_kf  -true_dist /Users/nora/PycharmProjects  -subtrees /Users/nora/PycharmProjects/my_test.subtrees -e 1 -o /Users/nora/PycharmProjects/my_toy_input
 
-    ### python main.py train_model_set -input_dir ../toy_example/train_tree_kf -true_dist ../toy_example/train_tree_newick  -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 1 -o ../toy_example/train_tree_models
-
+    ### python main.py train_model_set -input_dir ../toy_example/train_tree_kf -true_dist ../toy_example/train_tree_newick  -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 1 -clade 0 -o ../toy_example/train_tree_models
+    ### WITH SPECIFIED TEST SET: python main.py train_model_set -input_dir ../toy_example/train_tree_kf -test_set /Users/nora/PycharmProjects/toy_example/test_set.txt -true_dist ../toy_example/train_tree_newick_single_clade  -subtrees ../toy_example/train_tree_newick_single_clade/train_tree_single_clade.subtrees -e 5 -clade 0 -o ../toy_example/train_tree_models
+    ### python main.py train_model_set -input_dir ../toy_example/train_tree_kf -test_set /Users/nora/PycharmProjects/toy_example/test_set.txt -true_dist ../toy_example/train_tree_newick  -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 1 -clade 0 -o ../toy_example/train_tree_models
     parser_train_model_set = subparsers.add_parser('train_model_set',
                                             description='Trains individual models for each subtree')
     parser_train_model_set.add_argument('-input_dir',
                                help='Directory of input k-mer frequencies for assemblies or reads (dir of .kf files for backbone)')
+    parser_train_model_set.add_argument('-test_set',
+                                        help='File that contains list of filenames (no extension) to be used as a test set (list of .kf files for test subset)')
     parser_train_model_set.add_argument('-true_dist',
                                         help='Directory of distamce matrices for backbone subtrees (dir of *subtree_INDEX.di_mtrx files for backbone)')
     parser_train_model_set.add_argument('-subtrees',
@@ -659,6 +1075,10 @@ def main():
                                                                          'Default: {}'.format(learning_rate_min))
     parser_train_model_set.add_argument('-lr_decay', type=float, default=learning_rate_decay, help='Learning rate decay. ' +
                                                                                           'Default: {}'.format(learning_rate_decay))
+    parser_train_model_set.add_argument('-clade', type=int, nargs='*', help='Clade number to train. ' +
+                                                                                   'Default: all')
+    parser_train_model_set.add_argument('-save_interval', type=int, help='Save model after specified interval of epochs. ' +
+                                                                            'Default: last')
     parser_train_model_set.add_argument('-seed', type=int, default=seed, help='Random seed. ' +
                                                                        'Default: {}'.format(seed))
     parser_train_model_set.add_argument('-o',
@@ -673,7 +1093,7 @@ def main():
     ### To invoke
     ### python main.py query -input_dir /Users/nora/PycharmProjects/test_tree_kf  -model /Users/nora/PycharmProjects/my_toy_input  -classes /Users/nora/PycharmProjects/my_toy_input  -o /Users/nora/PycharmProjects/my_toy_input
 
-    ### python main.py query -input_dir ../toy_example/test_kf  -model ../toy_example/train_tree_models -classes ../toy_example/test_results  -o ../toy_example/test_results
+    ### python main.py query -input_dir ../toy_example/test_kf  -model ../toy_example/train_tree_models -classes ../toy_example/test_results  -o ../toy_example/test_results -remap /Users/nora/Documents/ml_metagenomics/cami_long_reads/my_rename_test.tsv
 
     parser_query = subparsers.add_parser('query',
                                                    description='Query models')
@@ -685,6 +1105,8 @@ def main():
                                         help='Path to classification file with subtrees information obtained from classify command (classes.out file)')
     parser_query.add_argument('-seed', type=int, default=seed, help='Random seed. ' +
                                                                               'Default: {}'.format(seed))
+    parser_query.add_argument('-remap',
+                                        help='Remap file with alterntive output names ("label" and "new_label" columns in .tsv format)')
 
     parser_query.add_argument('-o',
                                         help='Output path')
@@ -718,6 +1140,8 @@ def main():
                                   'Default for this machine: {0}'.format(mp.cpu_count()), metavar='P')
     parser_build_library.add_argument('-pseudocount', action='store_true',
                              help='Computes k-mer counts with 0.5 pseudocount added to each frequency value')
+    parser_build_library.add_argument('-raw_cnt', action='store_true',
+                             help='Computes raw k-mer counts without normalization')
 
     parser_build_library.add_argument('-tree', help='Input phylogeny (a .newick/.nwk format)')
     parser_build_library.add_argument('-size', type=int, default=default_subtree_sz, help='Size of the subtree. ' +
@@ -802,6 +1226,135 @@ def main():
 
 
     parser_process_query_data.set_defaults(func=process_query_data)
+
+
+
+    ### To invoke
+    ### python main.py get_chunks -input_dir ../toy_example/train_tree_fna - output_dir.. / toy_example / train_tree_kf
+    ### python main.py get_chunks -input_dir ../toy_example/test_fna -output_dir ../toy_example/test_kf
+    ### python main.py get_chunks -input_dir ../filt_10k -output_dir ../filt_10k_out
+
+    parser_chunks = subparsers.add_parser('get_chunks',
+                                        description='Process a library of reference genome-skims or assemblies')
+    parser_chunks.add_argument('-input_dir',
+                             help='Directory of input genomes or assemblies (dir of .fastq/.fq/.fa/.fna/.fasta files)')
+    parser_chunks.add_argument('-output_dir',
+                             help='Directory for k-mer frequency outputs (dir for .kf files)')
+    parser_chunks.add_argument('-k', type=int, choices=list(range(min_k_len, max_k_len + 1)), default=default_k_len,
+                             help='K-mer length [{}-{}]. '.format(min_k_len, max_k_len) +
+                                  'Default: {}'.format(default_k_len), metavar='K')
+    parser_chunks.add_argument('-p', type=int, choices=list(range(1, mp.cpu_count() + 1)), default=mp.cpu_count(),
+                             help='Max number of processors to use [1-{0}]. '.format(mp.cpu_count()) +
+                                  'Default for this machine: {0}'.format(mp.cpu_count()), metavar='P')
+    parser_chunks.add_argument('-pseudocount', action='store_true',
+                             help='Computes k-mer counts with 0.5 pseudocount added to each frequency value')
+    # parser_chunks.add_argument('-raw_cnt', action='store_true',
+    #                          help='Computes raw k-mer counts without normalization')
+
+    parser_chunks.set_defaults(func=get_chunks)
+
+
+
+    # Train_model_set_chunks command subparser
+
+    ### To invoke
+    ### python main.py train_model_set_chunks -input_dir /Users/nora/PycharmProjects/train_tree_kf  -true_dist /Users/nora/PycharmProjects  -subtrees /Users/nora/PycharmProjects/my_test.subtrees -e 1 -o /Users/nora/PycharmProjects/my_toy_input
+
+    ### python main.py train_model_set_chunks -input_dir /Users/nora/PycharmProjects/filt_10k_out -input_dir_fullgenomes /Users/nora/PycharmProjects/train_tree_kf -true_dist ../toy_example/train_tree_newick  -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 1 -o ../toy_example/train_tree_models -clade 1 0
+
+    parser_train_model_set_chunks = subparsers.add_parser('train_model_set_chunks',
+                                                   description='Trains individual models for each subtree using chunked genomes as input')
+    parser_train_model_set_chunks.add_argument('-input_dir',
+                                        help='Directory of input k-mer frequencies for chunked assemblies (dir of .kf files for chunked backbone species)')
+    parser_train_model_set_chunks.add_argument('-input_dir_fullgenomes',
+                                               help='Directory of input k-mer frequencies for full assemblies (dir of .kf files for full backbone species)')
+    parser_train_model_set_chunks.add_argument('-true_dist',
+                                        help='Directory of distamce matrices for backbone subtrees (dir of *subtree_INDEX.di_mtrx files for backbone)')
+    parser_train_model_set_chunks.add_argument('-subtrees',
+                                        help='Classification file with subtrees information obtained from divide_tree command (a .subtrees format)')
+    parser_train_model_set_chunks.add_argument('-e', type=int, default=default_di_epochs, help='Number of epochs. ' +
+                                                                                        'Default: {}'.format(
+                                                                                            default_di_epochs))
+    parser_train_model_set_chunks.add_argument('-hidden_sz', type=int, default=hidden_size_fc1, help='Hidden size. ' +
+                                                                                              'Default: {}'.format(
+                                                                                                  hidden_size_fc1))
+    parser_train_model_set_chunks.add_argument('-embed_sz', type=int, default=embedding_size, help='Embedding size. ' +
+                                                                                            'Default: {}'.format(
+                                                                                                embedding_size))
+    parser_train_model_set_chunks.add_argument('-batch_sz', type=int, default=batch_size, help='Batch size. ' +
+                                                                                        'Default: {}'.format(
+                                                                                            batch_size))
+    parser_train_model_set_chunks.add_argument('-lr', type=float, default=learning_rate, help='Start learning rate. ' +
+                                                                                       'Default: {}'.format(
+                                                                                           learning_rate))
+    parser_train_model_set_chunks.add_argument('-lr_min', type=float, default=learning_rate_min,
+                                        help='Minimum learning rate. ' +
+                                             'Default: {}'.format(learning_rate_min))
+    parser_train_model_set_chunks.add_argument('-lr_decay', type=float, default=learning_rate_decay,
+                                        help='Learning rate decay. ' +
+                                             'Default: {}'.format(learning_rate_decay))
+    parser_train_model_set_chunks.add_argument('-clade', type=int, nargs='*', help='Clade number to train. ' +
+                                                                                     'Default: all')
+    parser_train_model_set_chunks.add_argument('-seed', type=int, default=seed, help='Random seed. ' +
+                                                                              'Default: {}'.format(seed))
+    parser_train_model_set_chunks.add_argument('-cap', action='store_true',
+                                      help='Reduces memory consuption for input dataset (caps k-mer frequences at maximum of 255)')
+    parser_train_model_set_chunks.add_argument('-o',
+                                        help='Model output path')
+
+    parser_train_model_set_chunks.set_defaults(func=train_model_set_chunks)
+
+
+
+    # Train_classifier_chunks command subparser
+
+    ### To invoke
+    ### python main.py train_classifier_chunks -input_dir /Users/nora/PycharmProjects/train_tree_kf -subtrees /Users/nora/PycharmProjects/my_test.subtrees -e 1 -o /Users/nora/PycharmProjects/my_toy_input
+
+    ### python main.py train_classifier_chunks -input_dir ../toy_example/train_tree_kf -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 10 -o ../toy_example/train_tree_models
+    ### python main.py train_classifier_chunks -input_dir ../toy_example/train_tree_kf -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 10  -hidden_sz 2000 -batch_sz 32 -o ../toy_example/train_tree_models
+
+    ### Tested this locally
+    ### python main.py train_classifier_chunks -input_dir /Users/nora/PycharmProjects/filt_10k_out -input_dir_fullgenomes /Users/nora/PycharmProjects/train_tree_kf -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 10  -o ../toy_example/train_tree_models
+    ### with cap: python main.py train_classifier_chunks -input_dir /Users/nora/PycharmProjects/filt_10k_out -input_dir_fullgenomes /Users/nora/PycharmProjects/train_tree_kf -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 10 -cap  -o ../toy_example/train_tree_models
+
+
+
+    parser_trclas_chunks = subparsers.add_parser('train_classifier_chunks',
+                                          description='Train classifier model based on backbone subtrees (genomes split into chunks)')
+    parser_trclas_chunks.add_argument('-input_dir',
+                               help='Directory of input k-mer frequencies for assemblies or reads (dir of .kf files for backbone)')
+    parser_trclas_chunks.add_argument('-input_dir_fullgenomes',
+                                               help='Directory of input k-mer frequencies for full assemblies (dir of .kf files for full backbone species)')
+    parser_trclas_chunks.add_argument('-subtrees',
+                               help='Classification file with subtrees information obtained from divide_tree command (a .subtrees format)')
+    # parser_trclas_chunks.add_argument('-e', type=int, metavar='', choices=list(range(1, max_cl_epochs)), default=default_cl_epochs, help='Epochs [1-{}]. '.format(max_cl_epochs-1) +
+    #                                                                                     'Default: {}'.format(default_cl_epochs))
+    parser_trclas_chunks.add_argument('-e', type=int, default=default_cl_epochs, help='Number of epochs. ' +
+                                                                               'Default: {}'.format(default_cl_epochs))
+    parser_trclas_chunks.add_argument('-hidden_sz', type=int, default=hidden_size_fc1, help='Hidden size. ' +
+                                                                                     'Default: {}'.format(
+                                                                                         hidden_size_fc1))
+    parser_trclas_chunks.add_argument('-batch_sz', type=int, default=batch_size, help='Batch size. ' +
+                                                                               'Default: {}'.format(batch_size))
+    parser_trclas_chunks.add_argument('-lr', type=float, default=learning_rate, help='Start learning rate. ' +
+                                                                              'Default: {}'.format(learning_rate))
+    parser_trclas_chunks.add_argument('-lr_min', type=float, default=learning_rate_min, help='Minimum learning rate. ' +
+                                                                                      'Default: {}'.format(
+                                                                                          learning_rate_min))
+    parser_trclas_chunks.add_argument('-lr_decay', type=float, default=learning_rate_decay, help='Learning rate decay. ' +
+                                                                                          'Default: {}'.format(
+                                                                                              learning_rate_decay))
+    parser_trclas_chunks.add_argument('-seed', type=int, default=seed, help='Random seed. ' +
+                                                                     'Default: {}'.format(seed))
+    parser_trclas_chunks.add_argument('-mask', action='store_true',
+                             help='Masks low complexity k-mers in input features (reduces input dimension)')
+    parser_trclas_chunks.add_argument('-cap', action='store_true',
+                                      help='Reduces memory consuption for input dataset (caps k-mer frequences at maximum of 255)')
+    parser_trclas_chunks.add_argument('-o',
+                               help='Model output path')
+
+    parser_trclas_chunks.set_defaults(func=train_classifier_chunks)
 
 
     args = parser.parse_args()

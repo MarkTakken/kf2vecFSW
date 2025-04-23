@@ -24,9 +24,10 @@ import torch.nn.functional as F
 import torchvision
 import torchvision.transforms as transforms
 from torch.utils.data.sampler import SubsetRandomSampler
+from torch.nn.parallel import DataParallel
 import sklearn
 from sklearn.metrics import accuracy_score
-
+import multiprocessing as mp
 
 
 import sys
@@ -70,7 +71,7 @@ features_scaler = 1e4
 
 
 
-def train_model_set_func(features_folder, features_csv, clades_info, true_dist_matrix, num_epochs, hidden_size_fc1, embedding_size, in_batch_sz, in_lr, in_lr_min, in_lr_decay, seed, model_filepath):
+def train_model_set_func(features_folder, features_csv, clades_info, true_dist_matrix, num_epochs, hidden_size_fc1, embedding_size, in_batch_sz, in_lr, in_lr_min, in_lr_decay, clades_to_train, seed, model_filepath, test_IDs_lst, save_interval):
 
     # Seed
     torch.manual_seed(seed)
@@ -89,7 +90,17 @@ def train_model_set_func(features_folder, features_csv, clades_info, true_dist_m
 
     level = logging.INFO
     format = '%(message)s'
-    handlers = [logging.FileHandler(os.path.join(model_filepath, 'train_model.log'), 'w+'), logging.StreamHandler()]
+    #handlers = [logging.FileHandler(os.path.join(model_filepath, 'train_model.log'), 'w+'), logging.StreamHandler()]
+    #handlers = [
+    #    logging.FileHandler(os.path.join(model_filepath, 'train_model_{}.log'.format(time.strftime("%Y%m%d_%H%M%S"))),
+    #                        'w+'), logging.StreamHandler()]
+    handlers = [logging.FileHandler(os.path.join(model_filepath,
+                                                 'train_model_{}_clade_{}.log'.format(time.strftime("%Y%m%d_%H%M%S"), (
+                                                     '_'.join([str(elem) for elem in
+                                                               clades_to_train]) if clades_to_train != None else 'all'))),
+                                    'w+'), logging.StreamHandler()]
+
+
 
     #logging.basicConfig(level=logging.NOTSET, format='%(asctime)s | %(levelname)s: %(message)s', handlers=handlers)
 
@@ -107,6 +118,10 @@ def train_model_set_func(features_folder, features_csv, clades_info, true_dist_m
     logging.info('Feature directory: {}'.format(features_folder))
     logging.info('Clades information: {}'.format(clades_info))
     logging.info('Ground truth directory: {}'.format(true_dist_matrix))
+    if test_IDs_lst is not None:
+        logging.info('Test set: {}'.format(test_IDs_lst))
+    else:
+        logging.info('Test set: {}'.format('None'))
 
 
 
@@ -125,10 +140,10 @@ def train_model_set_func(features_folder, features_csv, clades_info, true_dist_m
     logging.info('Learning Rate: %g', in_lr)
     logging.info('Learning Rate Min: %g', in_lr_min)
     logging.info('Learning Rate Decay: %g', in_lr_decay)
+    logging.info('Clades to train: {}'.format(' '.join([str(elem) for elem in clades_to_train]) if clades_to_train != None else 'all'))
     logging.info('Random Seed: {}'.format(seed))
     # logging.info('Resuming Training:{}'.format('Yes' if resume else 'No'))
-
-
+    logging.info('Model save interval: {}'.format(save_interval if save_interval != None else 'unspecified'))
 
     #######################################################################
     # Read classification information
@@ -139,6 +154,9 @@ def train_model_set_func(features_folder, features_csv, clades_info, true_dist_m
     classification_df["clade"] = classification_df["clade"].astype(int)
     class_count = classification_df.clade.unique()
 
+    if clades_to_train != None:
+        class_count = np.array(clades_to_train)
+
 
     # Compute total number of classes
     logging.info('Number of Classes: {}'.format(class_count.size))
@@ -146,6 +164,22 @@ def train_model_set_func(features_folder, features_csv, clades_info, true_dist_m
 
     current_class_ids = {}
 
+
+    # Making a dataframe of sample names
+    feat_basename = [os.path.basename(i) for i in features_csv]
+    feat_samples_names = [f.rsplit('.kf', 1)[0] for f in feat_basename]
+    df_feat_samples_names = pd.DataFrame(feat_samples_names)
+    df_feat_samples_names.set_index(0, inplace=True)
+
+    # Extract pathway and file extension
+    path_name = os.path.split(features_csv[0])[0]
+    ext_name = os.path.splitext(os.path.basename(features_csv[0]))[1]  # Redundant
+
+    # Read test IDs for all clades
+    if test_IDs_lst is not None:
+        test_IDs_all_clades = process_file(test_IDs_lst)
+    else:
+        test_IDs_all_clades = []
 
     for c in class_count:
 
@@ -163,12 +197,20 @@ def train_model_set_func(features_folder, features_csv, clades_info, true_dist_m
         logging.info('\n==> Preparing Data...\n')
 
         # Subset feature input for a given clade
-        feature_input = features_csv.loc[features_csv.index.isin(current_class_ids[c])]
-        feature_input = feature_input.iloc[:,:]*features_scaler
-        input_size = np.shape(feature_input)[1]
+        feature_input = df_feat_samples_names.loc[df_feat_samples_names.index.isin(current_class_ids[c])]
+
+        # Get input dimensions
+        tmp_feature_input = pd.read_csv(features_csv[0], index_col=0, header=None, sep=',')
+        input_size = np.shape(tmp_feature_input)[1]
+
+        # Subset feature input for a given clade
+        # feature_input = features_csv.loc[features_csv.index.isin(current_class_ids[c])]
+        # feature_input = feature_input.iloc[:,:]*features_scaler
+        # input_size = np.shape(feature_input)[1]
+
 
         #logging.info(feature_input)
-        logging.info("Dimensions of feature matrix rows: {}, cols: {}".format(np.shape(feature_input)[0], np.shape(feature_input)[1]))
+        logging.info("Dimensions of feature matrix rows: {}, cols: {}".format(np.shape(feature_input)[0], input_size))
 
         # #######################################################################
         # Get names
@@ -199,14 +241,50 @@ def train_model_set_func(features_folder, features_csv, clades_info, true_dist_m
 
         #######################################################################
         # Prepare train/test dataset split
+
+        #feature_input_numpy = np.empty((len(backbone_names), input_size))
+
+        # Read samples into list
+        feature_input_list = [os.path.join(*[path_name, i + ext_name]) for i in backbone_names]
+
+        with mp.Pool() as pool:
+            embed_lst_tmp = pool.map(my_read_csv, feature_input_list)
+
+        # Concatenate list of dataframes and turn into numpy array
+        embed_lst_df = pd.concat(embed_lst_tmp)
+        embed_lst_df = embed_lst_df.iloc[:, :] * features_scaler
+        feature_input_numpy = embed_lst_df.to_numpy()
+
+
+        # Populate  numpy array
+        # for d in range(0, len(feature_input_list)):
+        #     feature_input_currdf = pd.read_csv(feature_input_list[d], index_col=0, header=None, sep=',')
+        #     feature_input_currdf = feature_input_currdf.iloc[:, :] * features_scaler
+        #     feature_input_numpy[d] = feature_input_currdf.to_numpy()
+
+
+        # Concatenate list of dataframes
+        # feature_input_frame = pd.DataFrame(feature_input_numpy)
+        # feature_input_frame.index = (backbone_names)
+        # print(feature_input_frame)
+
         partition = {}
-        partition['train'] = backbone_names
-        partition['test'] = []
+
+        if len(test_IDs_all_clades) !=0:
+            partition['train'] = [b for b in backbone_names if b not in test_IDs_all_clades]
+            partition['test'] = [b for b in backbone_names if b not in partition['train']]
+        else:
+            partition['train'] = backbone_names
+            partition['test'] = []
+
+
+        # print (partition['train'])
+        # print (partition['test'])
 
 
         # Custom dataset
-        training_set = datasets.Dataset(feature_input, partition['train'], label_idx_dict)
-        test_set = datasets.Dataset(feature_input, partition['test'], label_idx_dict)
+        training_set = datasets.Dataset_numpy(feature_input_numpy, partition['train'], label_idx_dict)
+        test_set = datasets.Dataset_numpy(feature_input_numpy, partition['test'], label_idx_dict)
         #val_set = datasets.Dataset(dataset_fname, partition['val'])
 
 
@@ -230,7 +308,8 @@ def train_model_set_func(features_folder, features_csv, clades_info, true_dist_m
 
 
         logging.info('Number of Train Samples: {}'.format(train_size))
-        # logging.info('Number of Test Samples: {}'.format(test_size))
+        if test_size != 0:
+            logging.info('Number of Test Samples: {}'.format(test_size))
         # logging.info('Number of Validation Samples:{}'.format(val_size))
 
 
@@ -238,7 +317,10 @@ def train_model_set_func(features_folder, features_csv, clades_info, true_dist_m
         # Model
         logging.info('\n==> Building model...\n')
 
-        model = models.NeuralNet(input_size, hidden_size_fc1, embedding_size).to(device)
+        #model = models.NeuralNet(input_size, hidden_size_fc1, embedding_size).to(device)
+        model = models.NeuralNet(input_size, hidden_size_fc1, embedding_size)
+        model_name = "NeuralNet"
+        model = DataParallel(model).to(device)
 
 
         # Custom weight initialization
@@ -336,6 +418,7 @@ def train_model_set_func(features_folder, features_csv, clades_info, true_dist_m
                 lowest_loss = train_loss
                 best_epoch = epoch
 
+                """
                 # Save the model
                 model.to('cpu')
 
@@ -349,8 +432,35 @@ def train_model_set_func(features_folder, features_csv, clades_info, true_dist_m
                 }
 
                 torch.save(state, (os.path.join(model_filepath, "model_subtree_{}.ckpt").format(c)))
-
+                
+                
                 model.to(device)
+                """
+
+                # Save best model
+                # Access the underlying model
+                actual_model = model.module
+                actual_model.to('cpu')
+                save_trained_model(model_name, input_size, hidden_size_fc1, embedding_size,
+                                   actual_model.state_dict(), model_filepath,
+                                   model_filename="model_subtree_{}.ckpt".format(c))
+                actual_model.to(device)
+
+            # Save model if interval is specified
+            if (save_interval is not None) and (epoch % save_interval == 0 or epoch == num_epochs-1):
+
+                my_model_subdir = os.path.join(model_filepath, "model_epoch_{}".format(epoch + 1))
+
+                if not os.path.exists(my_model_subdir):
+                    os.makedirs(my_model_subdir)
+
+                actual_model = model.module
+                actual_model.to('cpu')
+                save_trained_model(model_name, input_size, hidden_size_fc1, embedding_size,
+                                   actual_model.state_dict(), my_model_subdir,
+                                   model_filename="model_subtree_{}.ckpt".format(c))
+                actual_model.to(device)
+
 
 
             # elif epoch - best_epoch > early_stop_thresh:
@@ -380,14 +490,13 @@ def train_model_set_func(features_folder, features_csv, clades_info, true_dist_m
                 with torch.no_grad():
 
                     for i, (images, labels) in enumerate(test_loader):
-
                         images = images.reshape(-1, input_size).to(device)
+
                         real_dist = pairwise_true_dist(labels, pdf_sorted).to(device)  # get true distances
 
                         outputs = model(images.float())
                         #train_dist = pairwise_train_dist(outputs)
                         train_dist = pairwise_train_dist(outputs)
-
 
                         loss_a = criterion_a(train_dist, real_dist)
                         test_loss += loss_a.item() * images.shape[0] # running loss
@@ -432,6 +541,8 @@ def train_model_set_func(features_folder, features_csv, clades_info, true_dist_m
         #######################################################################
         ##### Load best model #####
         # NEED TO CHECK IF FILE EXISTS
+        # Not sure if I need to redefine to get rid of DataParallel
+        model = models.NeuralNet(input_size, hidden_size_fc1, embedding_size)
         state = torch.load(os.path.join(model_filepath, "model_subtree_{}.ckpt".format(c)))
 
         model.load_state_dict(state['state_dict'])
@@ -442,7 +553,8 @@ def train_model_set_func(features_folder, features_csv, clades_info, true_dist_m
         model.eval()
 
         with torch.no_grad():
-            outputs = model(torch.from_numpy(feature_input.values).float())
+            #outputs = model(torch.from_numpy(feature_input.values).float())
+            outputs = model(torch.from_numpy(feature_input_numpy).float())
 
 
         # Detach gradient and convert to numpy
@@ -466,6 +578,46 @@ def train_model_set_func(features_folder, features_csv, clades_info, true_dist_m
 
         logging.info("Dimensions of embedding output rows:{} cols:{}".format(len(df_embeddings), len(df_embeddings.columns)))
         df_embeddings.to_csv(os.path.join(model_filepath, 'embeddings_subtree_{}.csv'.format(c)), index=False, sep='\t', header = False)
+
+        # Check if model subdirectories exist
+        model_epoch_subdir = [x[0] for x in os.walk(model_filepath) if "model_epoch_" in x[0]]
+        if len(model_epoch_subdir) != 0:
+
+            for interval_dir in model_epoch_subdir:
+                logging.info("Computing embeddings for interval: {}".format(interval_dir))
+
+
+                state = torch.load(os.path.join(interval_dir, "model_subtree_{}.ckpt".format(c)))
+                model.load_state_dict(state['state_dict'])
+                model.to("cpu")
+
+                #### Output embeddings and distortions ####
+                model.eval()
+
+                with torch.no_grad():
+                    # outputs = model(torch.from_numpy(feature_input.values).float())
+                    outputs = model(torch.from_numpy(feature_input_numpy).float())
+
+                # Detach gradient and convert to numpy
+                train_dist = pairwise_train_dist(outputs)
+                pairwise_outputs3 = torch.square(train_dist)
+
+                # Round distances < 1e10-6 to 0 so apples can handle such values
+                pairwise_outputs3 = torch.where(pairwise_outputs3 < 1.0e-6, torch.tensor(0, dtype=pairwise_outputs3.dtype),
+                                                pairwise_outputs3)
+
+                df_outputs = pd.DataFrame(pairwise_outputs3.detach().numpy())
+                df_embeddings = pd.DataFrame(outputs.detach().numpy())
+
+                # Attach species names
+                df_outputs.columns = backbone_names
+                df_outputs.insert(loc=0, column='', value=backbone_names)
+                df_embeddings.insert(loc=0, column='', value=backbone_names)
+
+                df_outputs.to_csv(os.path.join(interval_dir,'distortions_subtree_{}.csv'.format(c)), index=False, sep='\t')
+                df_embeddings.to_csv(os.path.join(interval_dir, 'embeddings_subtree_{}.csv'.format(c)), index=False, sep='\t', header=False)
+
+                logging.info("Done with computing embeddings for interval: {}. Time: {:02d}:{:02d}:{:02d}".format(interval_dir, hrs, _min, sec))
 
 
         logging.info('\n==> Training for subtree {} completed!\n'.format(c))

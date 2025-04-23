@@ -24,8 +24,10 @@ import torch.nn.functional as F
 import torchvision
 import torchvision.transforms as transforms
 from torch.utils.data.sampler import SubsetRandomSampler
+from torch.nn.parallel import DataParallel
 import sklearn
 from sklearn.metrics import accuracy_score
+import multiprocessing as mp
 
 
 
@@ -70,7 +72,7 @@ features_scaler = 1e4
 
 
 
-def train_classifier_model_func(features_folder, feature_input, clades_info, num_epochs, hidden_size_fc1, in_batch_sz, in_lr, in_lr_min, in_lr_decay, seed, model_filepath):
+def train_classifier_model_func(features_folder, feature_input_filist, clades_info, num_epochs, hidden_size_fc1, in_batch_sz, in_lr, in_lr_min, in_lr_decay, seed, custom_mask, model_filepath):
 
     # Seed
     torch.manual_seed(seed)
@@ -89,7 +91,7 @@ def train_classifier_model_func(features_folder, feature_input, clades_info, num
 
     level = logging.INFO
     format = '%(message)s'
-    handlers = [logging.FileHandler(os.path.join(model_filepath, 'train_classifier.log'), 'w+'), logging.StreamHandler()]
+    handlers = [logging.FileHandler(os.path.join(model_filepath, 'train_classifier_{}.log'.format(time.strftime("%Y%m%d_%H%M%S")) ), 'w+'), logging.StreamHandler()]
 
     #logging.basicConfig(level=logging.NOTSET, format='%(asctime)s | %(levelname)s: %(message)s', handlers=handlers)
 
@@ -129,6 +131,7 @@ def train_classifier_model_func(features_folder, feature_input, clades_info, num
     logging.info('Learning Rate Decay: %g', in_lr_decay)
     logging.info('Random Seed: {}'.format(seed))
     #logging.info('Resuming Training:{}'.format('Yes' if resume else 'No'))
+    logging.info('Masking: {}'.format(custom_mask))
 
 
     #######################################################################
@@ -136,9 +139,44 @@ def train_classifier_model_func(features_folder, feature_input, clades_info, num
     logging.info('\n==> Preparing Data...\n')
 
 
+    with mp.Pool() as pool:
+        feature_input_filist_mp  = pool.map(my_read_csv, feature_input_filist)
+
+    feature_input = pd.concat(feature_input_filist_mp)
+
     feature_input = feature_input.iloc[:,:]*features_scaler
     input_size = np.shape(feature_input)[1]
     logging.info("Dimensions of feature matrix rows: {}, cols: {}".format(np.shape(feature_input)[0], np.shape(feature_input)[1]))
+
+    # Create mask
+    if custom_mask:
+
+        if input_size == 8192: #k = 7
+            my_alphabet_kmers = pd.read_csv("test_kmers_7_sorted", sep=" ", header=None, names=["kmer"])
+        elif input_size == 2080: #k = 6
+            my_alphabet_kmers = pd.read_csv("test_kmers_6_sorted", sep=" ", header=None, names=["kmer"])
+        elif input_size == 32: #k = 3
+            my_alphabet_kmers = pd.read_csv("vocab_generator_k3C_fin.fa", sep=" ", header=None, names=["kmer"])
+        elif input_size == 136: #k = 4
+            my_alphabet_kmers = pd.read_csv("vocab_generator_k4C_fin.fa", sep=" ", header=None, names=["kmer"])
+        elif input_size == 512: #k = 5
+            my_alphabet_kmers = pd.read_csv("vocab_generator_k5C_fin.fa", sep=" ", header=None, names=["kmer"])
+        elif input_size == 32896: #k = 8
+            my_alphabet_kmers = pd.read_csv("vocab_generator_k8C_fin.fa", sep=" ", header=None, names=["kmer"])
+        elif input_size == 131072: #k = 9
+            my_alphabet_kmers = pd.read_csv("vocab_generator_k9C_fin.fa", sep=" ", header=None, names=["kmer"])
+
+        my_mask = list((my_alphabet_kmers["kmer"].apply(set).apply(len) > 2))
+
+        feature_input = feature_input.iloc[:, [z for z in range(0, input_size) if my_mask[z]==True]]
+
+        # Resize input
+        input_size = np.shape(feature_input)[1]
+
+
+        logging.info("Dimensions of feature matrix after masking rows: {}, cols: {}".format(np.shape(feature_input)[0],
+                                                                          np.shape(feature_input)[1]))
+
 
     # #######################################################################
     # Get names
@@ -203,7 +241,9 @@ def train_classifier_model_func(features_folder, feature_input, clades_info, num
     logging.info('Number of Classes: {}'.format(class_count))
 
 
-    model = models.NeuralNetClassifierOnly(input_size, hidden_size_fc1, class_count).to(device)
+    #model = models.NeuralNetClassifierOnly(input_size, hidden_size_fc1, class_count).to(device)
+    model = models.NeuralNetClassifierOnly(input_size, hidden_size_fc1, class_count)
+    model = DataParallel(model).to(device)
 
     # Custom weight initialization
     #model.apply(weight_init)
@@ -308,8 +348,8 @@ def train_classifier_model_func(features_folder, feature_input, clades_info, num
             best_epoch = epoch
 
             # Save the model
+            """
             model.to('cpu')
-
             state = {
                 'model_name': "NeuralNetClassifierOnly",
                 'model_input_size': input_size,
@@ -318,10 +358,25 @@ def train_classifier_model_func(features_folder, feature_input, clades_info, num
                 'state_dict': model.state_dict(),
                 # 'optimizer': optimizer.state_dict()
             }
+            """
+            # Access the underlying model
+            actual_model = model.module
+            actual_model.to('cpu')
+
+            state = {
+                'model_name': "NeuralNetClassifierOnly",
+                'model_input_size': input_size,
+                'model_hidden_size_fc1': hidden_size_fc1,
+                'model_class_count': class_count,
+                'state_dict': actual_model.state_dict(),
+                # 'optimizer': optimizer.state_dict()
+            }
+
 
             torch.save(state, (os.path.join(model_filepath, "classifier_model.ckpt")))
 
-            model.to(device)
+            #model.to(device)
+            actual_model.to(device)
 
         # elif epoch - best_epoch > early_stop_thresh:
         #     print("Early stopped training at epoch %d" % epoch)
@@ -407,6 +462,9 @@ def train_classifier_model_func(features_folder, feature_input, clades_info, num
 
     #######################################################################
     ##### Load best model #####
+    # Not sure if I need to redefine to get rid of DataParallel
+    model = models.NeuralNetClassifierOnly(input_size, hidden_size_fc1, class_count)
+
     state = torch.load(os.path.join(model_filepath, "classifier_model.ckpt"))
 
     model.load_state_dict(state['state_dict'])
