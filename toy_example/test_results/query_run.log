@@ -4,29 +4,38 @@
 Query directory: ../toy_example/test_kf
 Model directory: ../toy_example/train_tree_models
 Class information: ../toy_example/test_results
+Seed: 28
 
 ==> Querying...
 
-Total subtrees to query: 1
+Total subtrees to query: 2
 
-==> Working on subtree 1...
+==> Working on subtree 0...
 
-
-==> Preparing Data...
-
-Dimensions of feature matrix rows: 3, cols: 8192
 
 ==> Building model...
 
 
 ==> Compute model output...
 
-Dimensions of output matrix rows:3 cols:3
+
+==> Computation is completed for subtree 0!
+
+Time: 00:00:00
+
+==> Working on subtree 1...
+
+
+==> Building model...
+
+
+==> Compute model output...
+
 
 ==> Computation is completed for subtree 1!
 
-Time: 00:00:00
+Time: 00:00:02
 
 ==> Computation Completed!
 
-Time: 00:00:00
+Time: 00:00:02

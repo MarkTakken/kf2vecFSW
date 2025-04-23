@@ -84,7 +84,7 @@ chunk_sz = 10000 # Minimum chunk size
 chunk_cnt_thr = 5 # Minimum number of chunks to preserve genome in a dataset.
 
 
-__version__ = 'kf2d 1.0.62'
+__version__ = 'kf2vec 1.0.62'
 
 
 # def print_hi(name):
@@ -976,9 +976,12 @@ def main():
     parser_distances.add_argument('-subtrees',
                                   help='Classification file with subtrees information obtained from divide_tree command (a .subtrees format)')
     parser_distances.add_argument('-mode', type=str, metavar='',
-                                  choices={"full_only", "hybrid", "subtrees_only"}, default="hybrid",
-                                  help='Ways to perform distance computation [full_only, hybrid, subtrees_only]. ' +
-                                       'Default: hybrid')
+                                  #choices={"full_only", "hybrid", "subtrees_only"}, default="hybrid",
+                                  default="subtrees_only",
+                                  #help='Ways to perform distance computation [full_only, hybrid, subtrees_only]. ' +
+                                  help = 'Ways to perform distance computation [subtrees_only]. ' +
+                                       #'Default: hybrid')
+                                       'Default: subtrees_only')
 
     parser_distances.set_defaults(func=get_distances)
 

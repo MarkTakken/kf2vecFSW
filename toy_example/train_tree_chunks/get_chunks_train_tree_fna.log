@@ -1,0 +1,79 @@
+
+==> Making a list of sample names. Time: 00:00:00
+
+
+==> Start processing samples. Time: 00:00:00
+
+
+==> Start processing. Sample: G000830275.fna
+>>> Formatting to single line. Sample: G000830275.fna
+>>> Replacing stretches of N. Sample: G000830275.fna
+>>> Filtering contigs below threshold 10000. Sample: G000830275.fna
+>>> Splitting into contigs. Sample: G000830275.fna
+>>> Getting contig ids. Sample: G000830275.fna
+>>> Computing contig statistics. Sample: G000830275.fna
+
+==> Done chunk processing for G000830275.fna. Time: 00:00:05
+
+
+==> Done computing k-mer frequences for G000830275.fna. Time: 00:00:13
+
+
+==> Start processing. Sample: G001940645.fna
+>>> Formatting to single line. Sample: G001940645.fna
+>>> Replacing stretches of N. Sample: G001940645.fna
+>>> Filtering contigs below threshold 10000. Sample: G001940645.fna
+>>> Splitting into contigs. Sample: G001940645.fna
+>>> Getting contig ids. Sample: G001940645.fna
+>>> Computing contig statistics. Sample: G001940645.fna
+
+==> Done chunk processing for G001940645.fna. Time: 05:17:23
+
+
+==> Done computing k-mer frequences for G001940645.fna. Time: 05:17:57
+
+
+==> Start processing. Sample: G001871415.fna
+>>> Formatting to single line. Sample: G001871415.fna
+>>> Replacing stretches of N. Sample: G001871415.fna
+>>> Filtering contigs below threshold 10000. Sample: G001871415.fna
+>>> Splitting into contigs. Sample: G001871415.fna
+>>> Getting contig ids. Sample: G001871415.fna
+>>> Computing contig statistics. Sample: G001871415.fna
+
+==> Done chunk processing for G001871415.fna. Time: 05:18:12
+
+
+==> Done computing k-mer frequences for G001871415.fna. Time: 05:18:21
+
+
+==> Start processing. Sample: G000402355.fna
+>>> Formatting to single line. Sample: G000402355.fna
+>>> Replacing stretches of N. Sample: G000402355.fna
+>>> Filtering contigs below threshold 10000. Sample: G000402355.fna
+>>> Splitting into contigs. Sample: G000402355.fna
+>>> Getting contig ids. Sample: G000402355.fna
+>>> Computing contig statistics. Sample: G000402355.fna
+
+==> Done chunk processing for G000402355.fna. Time: 05:18:30
+
+
+==> Done computing k-mer frequences for G000402355.fna. Time: 05:18:36
+
+
+==> Start processing. Sample: G000830295.fna
+>>> Formatting to single line. Sample: G000830295.fna
+>>> Replacing stretches of N. Sample: G000830295.fna
+>>> Filtering contigs below threshold 10000. Sample: G000830295.fna
+>>> Splitting into contigs. Sample: G000830295.fna
+>>> Getting contig ids. Sample: G000830295.fna
+>>> Computing contig statistics. Sample: G000830295.fna
+
+==> Done chunk processing for G000830295.fna. Time: 05:18:37
+
+
+==> Done computing k-mer frequences for G000830295.fna. Time: 05:18:44
+
+
+==> Done getting chunks. Time: 05:18:44
+
