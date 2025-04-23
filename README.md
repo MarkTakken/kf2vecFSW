@@ -64,7 +64,7 @@ Output includes results of classification and distance computation. Thus `classe
 
 -->
 
-## Main commands
+<!--## Main commands -->
 
 Version number and help
 ------------
