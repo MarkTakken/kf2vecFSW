@@ -165,27 +165,35 @@ While located in code directory
 python main.py get_frequencies -input_dir ../toy_example/train_tree_fna -output_dir ../toy_example/train_tree_kf
 python main.py get_frequencies -input_dir ../toy_example/test_fna -output_dir ../toy_example/test_kf
 ```
-2. To split tree into subtrees and compute ground truth distance matrices:
+
+3. To split tree into subtrees and compute ground truth distance matrices:
 ```
 python main.py divide_tree -tree ../toy_example/train_tree_newick/train_tree.nwk -size 2
 python main.py get_distances -tree ../toy_example/train_tree_newick/train_tree.nwk  -subtrees  ../toy_example/train_tree_newick/train_tree.subtrees -mode subtrees_only
 ```
-3. To train classifier model:
+4. To train classifier model:
 ```
 python main.py train_classifier -input_dir ../toy_example/train_tree_kf -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 10 -o ../toy_example/train_tree_models
 ```
-4. To classify query sequences:
+5. To classify query sequences:
 ```
 python main.py classify -input_dir ../toy_example/test_kf -model ../toy_example/train_tree_models -o ../toy_example/test_results
 ```
-5. To train distance models:
+6. To train distance models:
 ```
 python main.py train_model_set -input_dir ../toy_example/train_tree_kf -true_dist ../toy_example/train_tree_newick  -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 1 -o ../toy_example/train_tree_models
 ```
-6. To compute distances from backbone to query sequences:
+7. To compute distances from backbone to query sequences:
 ```
 python main.py query -input_dir ../toy_example/test_kf  -model ../toy_example/train_tree_models -classes ../toy_example/test_results  -o ../toy_example/test_results
 ```
+To scale the backbone phylogeny by a factor before splitting into subtrees. This step is OPTIONAL but might be helpful:
+------------
+```
+python main.py scale_tree -tree ../toy_example/train_tree_newick/train_tree.nwk  -factor 100
+```
+This step scales all branch lengths in backbone phylogeny by a specific factor (x100 in the example above). Software adds suffix `rFACTOR` (_r100.0) to the original phylogeny filename and saves the output into the same directory. 
+
 To test with chunked input on toy dataset (updating):
 ------------
 While located in code directory
