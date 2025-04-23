@@ -191,7 +191,8 @@ python main.py classify -input_dir ../toy_example/test_kf -model ../toy_example/
 ```
 python main.py train_model_set -input_dir ../toy_example/train_tree_kf -true_dist ../toy_example/train_tree_newick  -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 10 -o ../toy_example/train_tree_models
 ```
-Single clade example
+
+   Single clade example
 ```
 python main.py train_model_set -input_dir ../toy_example/train_tree_kf -true_dist ../toy_example/train_tree_newick  -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 10 -clade 0 -o ../toy_example/train_tree_models
 ```
