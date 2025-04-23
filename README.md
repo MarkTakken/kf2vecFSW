@@ -12,16 +12,16 @@ INSTALLATION
 We plan to put this on bioconda. For now, you can 
 
 1. Clone github repo
-2. Navigate to the directory
-3. Run:
+2. Navigate to the directory kf2vec
+3. Run to create an environment:
 
 ~~~bash 
-conda env create --file=kf2d/dependencies.yml
+conda env create -f=kf2vec_osx64_v1.yml
 ~~~
 
-Then, each time you want to run, activate the environment using
+Then, each time you want to run, activate an environment using
 ~~~bash
-conda activate kf2d
+conda activate kf2vec_osx64_v1
 ~~~
 
 Below, we assume you are in the `kf2d` directory of the repository. This will be fixed in the future. 
