@@ -169,8 +169,12 @@ python main.py get_frequencies -input_dir ../toy_example/test_fna -output_dir ..
 3. To split tree into subtrees and compute ground truth distance matrices:
 ```
 python main.py divide_tree -tree ../toy_example/train_tree_newick/train_tree.nwk -size 2
-python main.py get_distances -tree ../toy_example/train_tree_newick/train_tree.nwk  -subtrees  ../toy_example/train_tree_newick/train_tree.subtrees -mode subtrees_only
+python main.py get_distances -tree ../toy_example/train_tree_newick/train_tree.nwk  -subtrees  ../toy_example/train_tree_newick/train_tree.subtrees
 ```
+Divide tree command generates a file with extension `.subtrees` where the clade number for each sample is specified. Columns are space seperated and can be modified manually.
+Get distances takes as an input phylogeny and .subtrees file and generate corresponding distance matrices in the same folder where phylogeny is. Distance matrices are names with the suffix `subtree_cladeNumber`.
+If a distance matrix is required for the entire phylogeny, we suggest to increase size in a divide tree so entire tree is represented as single clade 0 and compute distance matrix.
+
 4. To train classifier model:
 ```
 python main.py train_classifier -input_dir ../toy_example/train_tree_kf -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 10 -o ../toy_example/train_tree_models
