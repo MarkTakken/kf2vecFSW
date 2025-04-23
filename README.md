@@ -24,7 +24,8 @@ Then, each time you want to run, activate an environment using
 conda activate kf2vec_osx64_v1
 ~~~
 
-Below, we assume you are in the `kf2d` directory of the repository. This will be fixed in the future. 
+Below, we assume you are in the `kf2vec` directory of the repository. This will be fixed in the future. 
+We tested this environment on macOS and Linux systems. We are working on creating Docker for users of other systems. 
 
 COMMANDS
 -----------
