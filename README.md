@@ -172,8 +172,10 @@ python main.py divide_tree -tree ../toy_example/train_tree_newick/train_tree.nwk
 python main.py get_distances -tree ../toy_example/train_tree_newick/train_tree.nwk  -subtrees  ../toy_example/train_tree_newick/train_tree.subtrees
 ```
 Divide tree command generates a file with extension `.subtrees` where the clade number for each sample is specified. Columns are space seperated and can be modified manually.
-Get distances takes as an input phylogeny and .subtrees file and generate corresponding distance matrices in the same folder where phylogeny is. Distance matrices are names with the suffix `subtree_cladeNumber`.
-If a distance matrix is required for the entire phylogeny, we suggest to increase size in a divide tree so entire tree is represented as single clade 0 and compute distance matrix.
+
+Get distances takes as an input phylogeny and `.subtrees` file, and generates corresponding distance matrices in the same folder where the phylogeny is. Distance matrices are named with the suffix `subtree_cladeNumber`.
+
+If a distance matrix is required for the entire phylogeny, we suggest increasing the `size` parameter in a divide tree such that entire tree is represented as a single clade 0 and compute the distance matrix.
 
 4. To train classifier model:
 ```
