@@ -96,8 +96,7 @@ We recommend generating subtrees for a phylogeny with number of leaves > 4000 us
  python main.py divide_tree -size $SUBTREE_SIZE -tree $INPUT_PHYLOGENY
 ```
 ###### Input: 
-**$INPUT_PHYLOGENY** is an input phylogenetic tree in .newick/.nwk format that should be split into multiple smaller subtrees. **-size** parameteter is the user spacified subtree size. We set -size default to 850 but in practice we recommend user to define it. 
-This command requires [TreeCluster](https://github.com/niemasd/TreeCluster) to be installed as a dependancy.
+**$INPUT_PHYLOGENY** is an input phylogenetic tree in .newick/.nwk format that should be split into multiple smaller subtrees. **-size** parameter is the user-specified subtree size. We set `-size` default to 850, but in practice we recommend that the user define it. Internally, this command relies on [TreeCluster](https://github.com/niemasd/TreeCluster).
 ###### Output: 
 Output is a text file (extension `.subtrees`) that lists every leaf of a phylogeny and its corresponding subtree number.
 
