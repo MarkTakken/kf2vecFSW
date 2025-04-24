@@ -167,6 +167,17 @@ python main.py query -input_dir $INPUT_DIR  -model $MODEL_DIR  -classes $CLASSES
 ###### Output: 
 The output is a query per backbone sequences distance matrix for subtrees.
 
+Generate chunked inputs for backbone species in training set
+------------
+To obtain k-mer frequencies for backbone species and a query set the user can execute the get_frequencies command:
+```
+ python main.py get_chunks -input_dir $INPUT_DIR -output_dir $OUTPUT_DIR
+```
+###### Input: 
+**$INPUT_DIR** is an input directory that should contain genome sequences in .fastq/.fq/.fa/.fna/.fasta format. The optional parameter is **-k**, which is a k-mer length, set to 7 by default. The optional parameter is **-p** corresponds to a count of processors that the software can utilize to preprocess input sequences. Optional parameters include **-pseudocount** that adds 0.5 count to each k-mer count before normalization.
+###### Output: 
+This command generates a single chunked sample for every entry in the **$INPUT_DIR**. Each output is a matrix where rows correspond to generated chunks and columns are k-mer count for a corresponding chunk (not normalized). Every output file has an extension `.kf` added and is stored in **$OUTPUT_DIR**.
+
 TOY EXAMPLE
 -----------
 
