@@ -739,12 +739,12 @@ def get_chunks(args):
             ordered_chunks_fnames = [q for q in ordered_chunks_fnames if q!=""]
 
             # Split contig into chunks
-            # subprocess.run(["seqkit", "split", "--by-id", f2, "--out-dir", os.path.join(*[args.output_dir, ndr3])],
-            #                stderr=open(os.devnull, 'w'))
+            subprocess.run(["seqkit", "split", "--by-id", f2, "--out-dir", os.path.join(*[args.output_dir, ndr3])],
+                           stderr=open(os.devnull, 'w'))
 
             # Split contig into chunks (using bbtools)
-            cmd2 = "demuxbyname.sh -Xmx2g in=" + f2 + " out=" + os.path.join(*[args.output_dir, ndr3, ]) + "/" + samples_names2[j] + ".part_%.fna" + " header"
-            subprocess.call(cmd2, shell=True)
+            #cmd2 = "demuxbyname.sh -Xmx2g in=" + f2 + " out=" + os.path.join(*[args.output_dir, ndr3, ]) + "/" + samples_names2[j] + ".part_%.fna" + " header"
+            #subprocess.call(cmd2, shell=True)
 
         # Drop sample with number of chunks below threshold
         if len(ordered_chunks_fnames) < chunk_cnt_thr:
@@ -797,12 +797,12 @@ def get_chunks(args):
 
         # Summarize kmer frequences into single file
         # Use with seqkit split
-        # my_order_list = ["{}.part_{}.part_{}.kf".format(samples_names[i], w.split("_sliding")[0], w) for w in ordered_chunks_fnames]
-        # my_order_list = [t.replace("sliding:", "sliding__") for t in  my_order_list]
+        my_order_list = ["{}.part_{}.part_{}.kf".format(samples_names[i], w.split("_sliding")[0], w) for w in ordered_chunks_fnames]
+        my_order_list = [t.replace("sliding:", "sliding__") for t in  my_order_list]
 
         # Use with demuxbyname cmd
-        my_order_list = ["{}.part_{}.part_{}.kf".format(samples_names[i], w.split("_sliding")[0], w) for w in
-                         ordered_chunks_fnames]
+        #my_order_list = ["{}.part_{}.part_{}.kf".format(samples_names[i], w.split("_sliding")[0], w) for w in
+        #                 ordered_chunks_fnames]
         #my_order_list = ["{}.kf".format(w) for w in ordered_chunks_fnames]
 
 
