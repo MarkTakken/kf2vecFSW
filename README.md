@@ -18,14 +18,14 @@ We plan to put this on bioconda. For now, you can
 3. Run to create an environment:
 
 ~~~bash 
-conda env create -f=kf2vec_osx64_v1.yml
+conda env create -f=kf2vec_osx64_v2.yml
 OR
-conda env create -f=kf2vec_osx64_v1_nobuilds.yml
+conda env create -f=kf2vec_osx64_v2_nobuilds.yml
 ~~~
 
 Then, each time you want to run, activate an environment using
 ~~~bash
-conda activate kf2vec_osx64_v1
+conda activate kf2vec_osx64_v2
 ~~~
 
 Below, we assume you are in the `kf2vec` directory of the repository. This will be fixed in the future. 
