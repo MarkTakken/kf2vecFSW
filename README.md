@@ -86,7 +86,7 @@ To obtain k-mer frequencies for backbone species and a query set the user can ex
  python main.py get_frequencies -input_dir $INPUT_DIR -output_dir $OUTPUT_DIR
 ```
 ###### Input: 
-**$INPUT_DIR** is an input directory that should contain genome sequences in .fastq/.fq/.fa/.fna/.fasta format. The optional parameter is **-k**, which is a k-mer length, set to 7 by default. The optional parameter is **-p** corresponds to a count of processors that the software can utilize to preprocess input sequences. Optional parameters include **-pseudocount** that add 0.5 count to each k-mer count before normalization and **-raw_cnt** that outputs k-mer frequencies without normalization. At its core, kf2vec  uses [Jellyfish](https://github.com/gmarcais/Jellyfish) to efficiently count k-mers in sequence data.
+**$INPUT_DIR** is an input directory that should contain genome sequences in .fastq/.fq/.fa/.fna/.fasta format. The optional parameter is **-k**, which is a k-mer length, set to 7 by default. The optional parameter is **-p** corresponds to a count of processors that the software can utilize to preprocess input sequences. Optional parameters include **-pseudocount** that adds 0.5 count to each k-mer count before normalization and **-raw_cnt** that outputs k-mer frequencies without normalization. At its core, kf2vec  uses [Jellyfish](https://github.com/gmarcais/Jellyfish) to efficiently count k-mers in sequence data.
 ###### Output: 
 This command generates normalized k-mer frequencies for every entry in the **$INPUT_DIR**. For every entry it outputs corresponding single file (comma delimited) with extention `.kf` that is stored in **$OUTPUT_DIR**.
 
@@ -125,7 +125,7 @@ The output is a file with the suffix `r$FACTOR`, saved in the same directory as 
 
 Training a classifier model
 ------------
-To train a classifier model user can use the following command:
+To train a classifier model, one can use the following command:
 ```
  python main.py train_classifier -input_dir $INPUT_DIR -subtrees $FILE.subtrees -e 2000 -o $OUTPUT_DIR
 ```
@@ -152,9 +152,9 @@ To train:
 python main.py train_model_set -input_dir $INPUT_DIR  -true_dist $TRUE_DIST_MATRIX_DIR  -subtrees $FILE.subtrees -e 4000 -o $OUTPUT_DIR
 ```
 ###### Input: 
-**$INPUT_DIR** is an input directory that should contain k-mer frequency count file for backbone species in `.kf` format (output of get_frequencies command). **$TRUE_DIST_MATRIX_DIR** is a directory where true distance matrices are located (location where `*subtree_INDEX.di_mtrx` files are). **$FILE.subtrees** is the file where each input genome has an assigned subtree number. Model training parameters include: **-e** number of epochs (default is 8000), **-hidden_sz** is a dimension of hidden layer in the model (default is 2048), **-embed_sz** is embedding dimension (default is 1024),  **-batch_sz** identifies batch size (default values is 16). **-lr**, **-lr_min** and **-lr_decay** refer to starting learning rate, minimum allowed learning rate and learning rate decay values. We suggest to keep learning rate paramaters at their default values unless user has a specific need to modify them. **-seed** is random seed (default is 28). **$OUTPUT_DIR** is the directory where `model_subtree_INDEX.ckpt` will be stored. 
+**$INPUT_DIR** is an input directory that should contain k-mer frequency count file for backbone species in `.kf` format (output of the `get_frequencies` command). **$TRUE_DIST_MATRIX_DIR** is a directory where true distance matrices are located (location where `*subtree_INDEX.di_mtrx` files are). **$FILE.subtrees** is the file where each input genome has an assigned subtree number. Model training parameters include: **-e** number of epochs (default is 8000), **-hidden_sz** is a dimension of hidden layer in the model (default is 2048), **-embed_sz** is embedding dimension (default is 1024),  **-batch_sz** identifies batch size (default values is 16). **-lr**, **-lr_min**, and **-lr_decay** refer to starting learning rate, minimum allowed learning rate, and learning rate decay values. We suggest keeping learning rate parameters at their default values unless user has a specific need to modify them. **-clade** is the clade number to train the model for. If the clade number is not provided, the models are trained for all clades consecutively. **-seed** is the random seed (default is 28). **$OUTPUT_DIR** is the directory where `model_subtree_INDEX.ckpt` will be stored. 
 ###### Output: 
-Output is a set of trained models for each input subtree.
+The output is a set of trained models for each input subtree.
 
 Query subtree models
 ------------
@@ -163,9 +163,9 @@ To query models:
 python main.py query -input_dir $INPUT_DIR  -model $MODEL_DIR  -classes $CLASSES_DIR -o $OUTPUT_DIR
 ```
 ###### Input: 
-**$INPUT_DIR** is an input directory that should contain k-mer frequency count file for query species in .kf format (output of get_frequencies command). **$MODEL_DIR** is the folder where model named `model_subtree_INDEX.ckpt` is located. **$CLASSES_DIR** is the directory where `classes.out` is located. **$OUTPUT_DIR** is the directory where `apples_input_di_mtrx_query_INDEX.csv` will be stored. **-seed** is random seed (default is 28).
+**$INPUT_DIR** is an input directory that should contain k-mer frequency count file for the query species in `.kf` format (output of `get_frequencies` command). **$MODEL_DIR** is the folder where model named `model_subtree_INDEX.ckpt` is located. **$CLASSES_DIR** is the directory where `classes.out` is located. **$OUTPUT_DIR** is the directory where `apples_input_di_mtrx_query_INDEX.csv` will be stored. **-seed** is the random seed (default is 28).
 ###### Output: 
-Output is a query per backbone sequences distance matrix for subtrees.
+The output is a query per backbone sequences distance matrix for subtrees.
 
 TOY EXAMPLE
 -----------
