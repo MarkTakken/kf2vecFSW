@@ -1,5 +1,6 @@
 
-# kf2vec
+# kf2vec 
+k-mer frequency to vector
 <!-- k-mer frequency to distance-->
 
 This repository contains the code of the software.
@@ -84,13 +85,13 @@ To obtain k-mer frequencies for backbone species and a query set the user can ex
  python main.py get_frequencies -input_dir $INPUT_DIR -output_dir $OUTPUT_DIR
 ```
 ###### Input: 
-**$INPUT_DIR** is an input directory that should contain genome sequences in .fastq/.fq/.fa/.fna/.fasta format. Optional parameter is **-k** which is a k-mer length, set to 7 by default. This command requires [Jellyfish](https://github.com/gmarcais/Jellyfish) to be installed as a dependancy. Optional parameter is **-p** corresponds to number of processors that Jellyfish can utilize to preprocess input sequences.
+**$INPUT_DIR** is an input directory that should contain genome sequences in .fastq/.fq/.fa/.fna/.fasta format. Optional parameter is **-k** which is a k-mer length, set to 7 by default. This command requires [Jellyfish](https://github.com/gmarcais/Jellyfish) to be installed as a dependancy. Optional parameter is **-p** corresponds to number of processors that software can utilize to preprocess input sequences. At its core, kf2vec  uses Jellyfish to efficiently count k-mers in sequence data.
 ###### Output: 
 This command generates normalized k-mer frequencies for every entry in the **$INPUT_DIR**. For every entry it outputs corresponding single file (comma delimited) with extention `.kf` that is stored in **$OUTPUT_DIR**.
 
 Split phylogeny into subtrees 
 ------------
-To generate subtrees for a phylogeny with number of leaves > 4000 the user can execure divide_tree command:
+We recommend generating subtrees for a phylogeny with number of leaves > 4000 using `divide_tree` command:
 ```
  python main.py divide_tree -size $SUBTREE_SIZE -tree $INPUT_PHYLOGENY
 ```
@@ -104,7 +105,7 @@ Ground truth distance matrix computation
 ------------
 To compute distance matrix for backbone phylogeny:
 ```
-python main.py get_distances -tree $INPUT_PHYLOGENY  -subtrees $FILE.subtrees -mode [full_only, hybrid, subtrees_only]
+python main.py get_distances -tree $INPUT_PHYLOGENY  -subtrees $FILE.subtrees
 ```
 ###### Input: 
 **$INPUT_PHYLOGENY** is an input phylogenetic tree in .newick/.nwk format. **$FILE.subtrees** is the file where each input genome has an assigned subtree number. **-mode** parameter can take values full_only, hybrid (default), subtrees_only and specifies whether distance matrices should be computed only for a full backbone tree, subtrees or both. This command requires [TreeCluster](https://github.com/niemasd/TreeCluster) to be installed as a dependancy. 
