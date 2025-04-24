@@ -1,7 +1,7 @@
 
 # kf2vec 
-k-mer frequency to vector
------------
+## k-mer frequency to vector
+
 <!-- k-mer frequency to distance-->
 
 This repository contains the code of the software.
