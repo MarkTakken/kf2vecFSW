@@ -112,6 +112,17 @@ python main.py get_distances -tree $INPUT_PHYLOGENY  -subtrees $FILE.subtrees
 ###### Output: 
 The output is will be saved in a directory where phylogeny is located.
 
+Scale phylogeny 
+------------
+To scale phylogeny by multiplying all branch lengths by a user-specified factor:
+```
+python main.py scale_tree -tree $INPUT_PHYLOGENY  -factor $SCALE_VALUE
+```
+###### Input: 
+**$INPUT_PHYLOGENY** is an input phylogenetic tree in .newick/.nwk format. **$SCALE_VALUE** is a scaling factor by which all branch lengths will be multiplied. Internally it uses [TreeSwift](https://github.com/niemasd/TreeSwift). 
+###### Output: 
+The output is a file with the suffix `r$FACTOR`, saved in the same directory as the phylogeny file.
+
 Training a classifier model
 ------------
 To train a classifier model user can use the following command:
