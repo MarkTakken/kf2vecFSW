@@ -73,7 +73,7 @@ Output includes results of classification and distance computation. Thus `classe
 
 Version number and help
 ------------
-To obtain version number or invoke description of commands:
+To obtain the version number or invoke the description of commands:
 ```
  python main.py --version
  python main.py --help
@@ -81,7 +81,7 @@ To obtain version number or invoke description of commands:
 
 Extracting k-mer frequencies
 ------------
-To obtain k-mer frequencies for backbone species and a query set the user can execute the get_frequencies command:
+To obtain k-mer frequencies for backbone species and a query set, the user can execute the get_frequencies command:
 ```
  python main.py get_frequencies -input_dir $INPUT_DIR -output_dir $OUTPUT_DIR
 ```
@@ -97,7 +97,7 @@ We recommend generating subtrees for a phylogeny with a number of leaves > 4000 
  python main.py divide_tree -size $SUBTREE_SIZE -tree $INPUT_PHYLOGENY
 ```
 ###### Input: 
-**$INPUT_PHYLOGENY** is an input phylogenetic tree in .newick/.nwk format that should be split into multiple smaller subtrees. **-size** parameter is the user-specified subtree size. We set `-size` default to 850, but in practice, we recommend that the user define it. Internally, this command relies on [TreeCluster](https://github.com/niemasd/TreeCluster).
+**$INPUT_PHYLOGENY** is an input phylogenetic tree in .newick/.nwk format that should be split into multiple smaller subtrees. **-size** parameter is the user-specified subtree size. We set **-size** default to 850, but in practice, we recommend that the user define it. Internally, this command relies on [TreeCluster](https://github.com/niemasd/TreeCluster).
 ###### Output: 
 The output is a text file (extension `.subtrees`) that lists every leaf of a phylogeny and its corresponding subtree number.
 
@@ -130,7 +130,7 @@ To train a classifier model, one can use the following command:
  python main.py train_classifier -input_dir $INPUT_DIR -subtrees $FILE.subtrees -e 2000 -o $OUTPUT_DIR
 ```
 ###### Input: 
-**$INPUT_DIR** is an input directory that should contain a k-mer frequency count file for backbone species in `.kf` format (output of the `get_frequencies` command). **$FILE.subtrees** is the file where each input genome has an assigned target subtree number. Optional model training parameters include: **-e** number of epochs (default is 2000), **-hidden_sz** dimension of hidden layer (default value is 2048) and **-batch_sz** identifies batch size (default value is 16). **-lr**, **-lr_min** and **-lr_decay** refer to starting learning rate, minimum allowed learning rate, and learning rate decay values. We suggest keeping learning rate parameters at their default values unless the user has a specific need to modify them. **-seed** is the random seed (default 28). **$OUTPUT_DIR** is the directory where the classifier model will be saved once training is complete. 
+**$INPUT_DIR** is an input directory that should contain a k-mer frequency count file for backbone species in `.kf` format (output of the `get_frequencies` command). **$FILE.subtrees** is the file where each input genome has an assigned target subtree number. Optional model training parameters include: **-e** number of epochs (default is 2000), **-hidden_sz** dimension of hidden layer (default value is 2048), and **-batch_sz** identifies batch size (default value is 16). **-lr**, **-lr_min** and **-lr_decay** refer to starting learning rate, minimum allowed learning rate, and learning rate decay values. We suggest keeping learning rate parameters at their default values unless the user has a specific need to modify them. **-seed** is the random seed (default 28). **$OUTPUT_DIR** is the directory where the classifier model will be saved once training is complete. 
 ###### Output: 
 The output is a classifier model called `classifier_model.ckpt` stored in a user-defined output repository.
 
@@ -163,13 +163,13 @@ To query models:
 python main.py query -input_dir $INPUT_DIR  -model $MODEL_DIR  -classes $CLASSES_DIR -o $OUTPUT_DIR
 ```
 ###### Input: 
-**$INPUT_DIR** is an input directory that should contain k-mer frequency count file for the query species in `.kf` format (output of `get_frequencies` command). **$MODEL_DIR** is the folder where model named `model_subtree_INDEX.ckpt` is located. **$CLASSES_DIR** is the directory where `classes.out` is located. **$OUTPUT_DIR** is the directory where `apples_input_di_mtrx_query_INDEX.csv` will be stored. **-seed** is the random seed (default is 28).
+**$INPUT_DIR** is an input directory that should contain k-mer frequency count files for the query species in `.kf` format (output of `get_frequencies` command). **$MODEL_DIR** is the folder where model named `model_subtree_INDEX.ckpt` is located. **$CLASSES_DIR** is the directory where `classes.out` is located. **$OUTPUT_DIR** is the directory where `apples_input_di_mtrx_query_INDEX.csv` will be stored. **-seed** is the random seed (default is 28).
 ###### Output: 
 The output is a query per backbone sequences distance matrix for subtrees.
 
 Generate chunked inputs for backbone species in the training set
 ------------
-To obtain k-mer frequencies for backbone species and a query set the user can execute the get_frequencies command:
+To obtain k-mer frequencies for backbone species and a query set, the user can execute the get_frequencies command:
 ```
  python main.py get_chunks -input_dir $INPUT_DIR -output_dir $OUTPUT_DIR
 ```
@@ -259,7 +259,7 @@ python main.py scale_tree -tree ../toy_example/train_tree_newick/train_tree.nwk 
 ```
 This step scales all branch lengths in backbone phylogeny by a specific factor (x100 in the example above). Software adds the suffix `rFACTOR` (_r100.0) to the original phylogeny filename and saves the output into the same directory. 
 
-To test with chunked input on toy dataset (updating):
+To test with chunked input on toy dataset:
 ------------
 While located in code directory
 
@@ -273,8 +273,14 @@ python main.py train_classifier_chunks -input_dir ../toy_example/train_tree_chun
 ```
 3. To train the embedder model for chunked input:
 ```
+# Train on clade 1 and 0
 python main.py train_model_set_chunks -input_dir ../toy_example/train_tree_chunks -input_dir_fullgenomes ../toy_example/train_tree_kf -true_dist ../toy_example/train_tree_newick  -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 10 -o ../toy_example/train_tree_models -clade 1 0
+
+# Train only on clade 1
+python main.py train_model_set_chunks -input_dir ../toy_example/train_tree_chunks -input_dir_fullgenomes ../toy_example/train_tree_kf -true_dist ../toy_example/train_tree_newick  -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 10 -o ../toy_example/train_tree_models -clade 1
 ```
+
+
 <!--
 To test wrapper functions on toy dataset:
 ------------
