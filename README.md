@@ -178,6 +178,18 @@ To obtain k-mer frequencies for backbone species and a query set the user can ex
 ###### Output: 
 This command generates a single chunked sample for every entry in the **$INPUT_DIR**. Each output is a matrix where rows correspond to generated chunks and columns are k-mer count for a corresponding chunk (not normalized). Every output file has an extension `.kf` added and is stored in **$OUTPUT_DIR**.
 
+Training a classifier model for chunked input
+------------
+To train a classifier model for chunked input, one can use the following command:
+```
+ python main.py train_classifier_chunks -input_dir $INPUT_DIR -input_dir_fullgenomes $INPUT_DIR_FULL -subtrees $FILE.subtrees -e 2000 -o $OUTPUT_DIR
+```
+###### Input: 
+**$INPUT_DIR** is an input directory that should contain a k-mer counts file (chunked input) for backbone species in `.kf` format (output of the `get_chunks` command). **$INPUT_DIR_FULL** is an input directory that should contain the k-mer frequencies for full genomes of backbone species in `.kf` format (output of the `get_frequencies` command). **$FILE.subtrees** is the file where each input genome has an assigned target subtree number. Optional model training parameters include: **-e** number of epochs (default is 2000), **-hidden_sz** dimension of hidden layer (default value is 2048) and **-batch_sz** identifies batch size (default value is 16). **-lr**, **-lr_min** and **-lr_decay** refer to starting learning rate, minimum allowed learning rate, and learning rate decay values. We suggest keeping learning rate parameters at their default values unless the user has a specific need to modify them. **-seed** is the random seed (default 28). **-cap** reads input values as an unsigned 8-bit integer to reduce memory consumption while training. **$OUTPUT_DIR** is the directory where the classifier model will be saved once training is complete. 
+###### Output: 
+The output is a classifier model called `classifier_model.ckpt` stored in a user-defined output repository.
+
+
 TOY EXAMPLE
 -----------
 
