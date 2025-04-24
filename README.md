@@ -167,7 +167,7 @@ python main.py query -input_dir $INPUT_DIR  -model $MODEL_DIR  -classes $CLASSES
 ###### Output: 
 The output is a query per backbone sequences distance matrix for subtrees.
 
-Generate chunked inputs for backbone species in training set
+Generate chunked inputs for backbone species in the training set
 ------------
 To obtain k-mer frequencies for backbone species and a query set the user can execute the get_frequencies command:
 ```
