@@ -99,18 +99,18 @@ We recommend generating subtrees for a phylogeny with number of leaves > 4000 us
 ###### Input: 
 **$INPUT_PHYLOGENY** is an input phylogenetic tree in .newick/.nwk format that should be split into multiple smaller subtrees. **-size** parameter is the user-specified subtree size. We set `-size` default to 850, but in practice we recommend that the user define it. Internally, this command relies on [TreeCluster](https://github.com/niemasd/TreeCluster).
 ###### Output: 
-Output is a text file (extension `.subtrees`) that lists every leaf of a phylogeny and its corresponding subtree number.
+The output is a text file (extension `.subtrees`) that lists every leaf of a phylogeny and its corresponding subtree number.
 
 Ground truth distance matrix computation 
 ------------
-To compute distance matrix for backbone phylogeny:
+To compute the distance matrix for the backbone phylogeny:
 ```
 python main.py get_distances -tree $INPUT_PHYLOGENY  -subtrees $FILE.subtrees
 ```
 ###### Input: 
-**$INPUT_PHYLOGENY** is an input phylogenetic tree in .newick/.nwk format. **$FILE.subtrees** is the file where each input genome has an assigned subtree number. **-mode** parameter can take values full_only, hybrid (default), subtrees_only and specifies whether distance matrices should be computed only for a full backbone tree, subtrees or both. This command requires [TreeCluster](https://github.com/niemasd/TreeCluster) to be installed as a dependancy. 
+**$INPUT_PHYLOGENY** is an input phylogenetic tree in .newick/.nwk format. **$FILE.subtrees** is the file where each input genome has an assigned subtree number. For now **-mode** parameter is set to `subtrees_only`.If a distance matrix corresponds to a single tree, it can be treated as a single clade (clade 0) and provided as input to this command. Under the hood, the distance computation command uses [TreeSwift](https://github.com/niemasd/TreeSwift). 
 ###### Output: 
-Output is will be saved in a directory where phylogeny is located.
+The output is will be saved in a directory where phylogeny is located.
 
 Training a classifier model
 ------------
