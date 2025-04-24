@@ -17,6 +17,8 @@ We plan to put this on bioconda. For now, you can
 
 ~~~bash 
 conda env create -f=kf2vec_osx64_v1.yml
+OR
+conda env create -f=kf2vec_osx64_v1_nobuilds.yml
 ~~~
 
 Then, each time you want to run, activate an environment using
