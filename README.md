@@ -189,6 +189,18 @@ To train a classifier model for chunked input, one can use the following command
 ###### Output: 
 The output is a classifier model called `classifier_model.ckpt` stored in a user-defined output repository.
 
+Train embedder models for chunked input
+------------
+To train:
+```
+python main.py train_model_set_chunks -input_dir $INPUT_DIR -input_dir_fullgenomes $INPUT_DIR_FULL -true_dist $TRUE_DIST_MATRIX_DIR  -subtrees $FILE.subtrees -e 4000 -o $OUTPUT_DIR
+```
+###### Input: 
+**$INPUT_DIR** is an input directory that should contain k-mer counts files (chunked input) for backbone species in `.kf` format (output of the `get_chunks` command). **$INPUT_DIR_FULL** is an input directory that should contain the k-mer frequencies for full genomes of backbone species in `.kf` format (output of the `get_frequencies` command). **$TRUE_DIST_MATRIX_DIR** is a directory where true distance matrices are located (location where `*subtree_INDEX.di_mtrx` files are). **$FILE.subtrees** is the file where each input genome has an assigned subtree number. Model training parameters include: **-e** number of epochs (default is 8000), **-hidden_sz** is a dimension of hidden layer in the model (default is 2048), **-embed_sz** is embedding dimension (default is 1024),  **-batch_sz** identifies batch size (default values is 16). **-lr**, **-lr_min**, and **-lr_decay** refer to starting learning rate, minimum allowed learning rate, and learning rate decay values. We suggest keeping learning rate parameters at their default values unless user has a specific need to modify them. **-clade** is the clade number to train the model for. If the clade number is not provided, the models are trained for all clades consecutively. **-seed** is the random seed (default is 28). **-cap** reads input values as an unsigned 8-bit integer to reduce memory consumption while training. **$OUTPUT_DIR** is the directory where `model_subtree_INDEX.ckpt` will be stored. 
+###### Output: 
+The output is a set of trained models for each input subtree.
+
+
 
 TOY EXAMPLE
 -----------
@@ -254,6 +266,14 @@ While located in code directory
 1. To generate chunked input for backbone training sequences (this step takes a couple of minutes, run with -p 20 to speed up):
 ```
 python main.py get_chunks -input_dir ../toy_example/train_tree_fna -output_dir ../toy_example/train_tree_chunks
+```
+2. To train a classifier model for chunked input:
+```
+python main.py train_classifier_chunks -input_dir ../toy_example/train_tree_chunks -input_dir_fullgenomes ../toy_example/train_tree_kf -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 10  -o ../toy_example/train_tree_models -cap
+```
+3. To train the embedder model for chunked input:
+```
+python main.py train_model_set_chunks -input_dir ../toy_example/train_tree_chunks -input_dir_fullgenomes ../toy_example/train_tree_kf -true_dist ../toy_example/train_tree_newick  -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 10 -o ../toy_example/train_tree_models -clade 1 0
 ```
 <!--
 To test wrapper functions on toy dataset:
