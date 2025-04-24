@@ -1,6 +1,6 @@
 
 # kf2vec 
-## k-mer frequency to vector
+k-mer frequency to vector
 
 <!-- k-mer frequency to distance-->
 
