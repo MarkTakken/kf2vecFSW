@@ -85,7 +85,7 @@ To obtain k-mer frequencies for backbone species and a query set the user can ex
  python main.py get_frequencies -input_dir $INPUT_DIR -output_dir $OUTPUT_DIR
 ```
 ###### Input: 
-**$INPUT_DIR** is an input directory that should contain genome sequences in .fastq/.fq/.fa/.fna/.fasta format. Optional parameter is **-k** which is a k-mer length, set to 7 by default. This command requires [Jellyfish](https://github.com/gmarcais/Jellyfish) to be installed as a dependancy. Optional parameter is **-p** corresponds to number of processors that software can utilize to preprocess input sequences. At its core, kf2vec  uses Jellyfish to efficiently count k-mers in sequence data.
+**$INPUT_DIR** is an input directory that should contain genome sequences in .fastq/.fq/.fa/.fna/.fasta format. The optional parameter is **-k**, which is a k-mer length, set to 7 by default. The optional parameter is **-p** corresponds to a count of processors that the software can utilize to preprocess input sequences. Optional parameters include **-pseudocount** that add 0.5 count to each k-mer count before normalization and **-raw_cnt** that outputs k-mer frequencies without normalization. At its core, kf2vec  uses [Jellyfish](https://github.com/gmarcais/Jellyfish) to efficiently count k-mers in sequence data.
 ###### Output: 
 This command generates normalized k-mer frequencies for every entry in the **$INPUT_DIR**. For every entry it outputs corresponding single file (comma delimited) with extention `.kf` that is stored in **$OUTPUT_DIR**.
 
