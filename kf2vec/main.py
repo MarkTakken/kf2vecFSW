@@ -201,7 +201,7 @@ def get_frequencies(args):
     samples_names = [f.rsplit('.f', 1)[0] for f in files_names]
 
 
-    vocab_path = resources.files("kf2vec") / "data"
+    vocab_path = resources.files("kf2vec")/"data"
 
     # Read kmer alphabet
     if args.k==7:
