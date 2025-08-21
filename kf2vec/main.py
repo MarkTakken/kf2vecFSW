@@ -9,6 +9,14 @@
 # Uses feature extracted from 10K dataset
 # Kmer counts computed for >80K large contigs and <=80K chimeric contigs separately
 
+import warnings
+
+# Suppress the specific torchvision image extension warning
+warnings.filterwarnings(
+    "ignore",
+    message="Failed to load image Python extension",
+    category=UserWarning
+)
 
 import time
 import itertools
@@ -19,6 +27,7 @@ import fnmatch
 import treeswift
 from treeswift import read_tree_newick
 import warnings
+from importlib import resources
 
 
 
@@ -26,8 +35,8 @@ import pandas as pd
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torchvision
-import torchvision.transforms as transforms
+#import torchvision
+#import torchvision.transforms as transforms
 from torch.utils.data.sampler import SubsetRandomSampler
 import sklearn
 from sklearn.metrics import accuracy_score
@@ -43,23 +52,30 @@ from subprocess import call, check_output, STDOUT
 import multiprocessing as mp
 import math
 import copy
-import models
-import datasets
-import losses
+from . import models
+from . import datasets
+from . import losses
+from . import parameter_inits
 
-import parameter_inits
+from . import utils
+from .utils import *
+from . import weight_inits
+from .weight_inits import *
+from . import train_classifier_model
+from .train_classifier_model import *
+from . import classify
+from .classify import *
+from . import train_model_set
+from .train_model_set import *
+from . import query
+from .query import *
+#from query_last import *
+#from query_consec import *
 
-from utils import *
-from weight_inits import *
-from train_classifier_model import *
-from classify import *
-from train_model_set import *
-from query import *
-from query_last import *
-from query_consec import *
-
-from train_model_set_chunks import *
-from train_classifier_model_chunks import *
+from . import  train_model_set_chunks
+from .train_model_set_chunks import *
+from . import train_classifier_model_chunks
+from .train_classifier_model_chunks import *
 
 default_k_len = 7
 min_k_len = 3
@@ -124,7 +140,7 @@ def divide_tree(args):
     # Run TreeCluster
     subtree_tmp = os.path.join(head_tail[0] , "{}.{}".format(tree_name, "subtrees_tmp"))
 
-    call(["TreeCluster.py", "-i", tree_tmp, "-o", subtree_tmp, "-m", "sum_branch", "-t", str(2* args.size)],
+    call(["TreeCluster.py", "-i", tree_tmp, "-o", subtree_tmp, "-m", "sum_branch", "-t", str(2 * args.size)],
          stderr=open(os.devnull, 'w'))
 
 
@@ -185,23 +201,25 @@ def get_frequencies(args):
     samples_names = [f.rsplit('.f', 1)[0] for f in files_names]
 
 
+    vocab_path = resources.files("kf2vec") / "data"
+
     # Read kmer alphabet
     if args.k==7:
-        my_alphabet_kmers = pd.read_csv(os.path.join(os.getcwd(), "test_kmers_7_sorted"), sep = " ", header = None, names = ["kmer"])
+        my_alphabet_kmers = pd.read_csv(os.path.join(vocab_path, "test_kmers_7_sorted"), sep = " ", header = None, names = ["kmer"])
     elif args.k==3:
-        my_alphabet_kmers = pd.read_csv(os.path.join(os.getcwd(), "vocab_generator_k3C_fin.fa"), sep = " ", header = None, names = ["kmer"])
+        my_alphabet_kmers = pd.read_csv(os.path.join(vocab_path, "vocab_generator_k3C_fin.fa"), sep = " ", header = None, names = ["kmer"])
     elif args.k==4:
-        my_alphabet_kmers = pd.read_csv(os.path.join(os.getcwd(), "vocab_generator_k4C_fin.fa"), sep = " ", header = None, names = ["kmer"])
+        my_alphabet_kmers = pd.read_csv(os.path.join(vocab_path, "vocab_generator_k4C_fin.fa"), sep = " ", header = None, names = ["kmer"])
     elif args.k==5:
-        my_alphabet_kmers = pd.read_csv(os.path.join(os.getcwd(), "vocab_generator_k5C_fin.fa"), sep = " ", header = None, names = ["kmer"])
+        my_alphabet_kmers = pd.read_csv(os.path.join(vocab_path, "vocab_generator_k5C_fin.fa"), sep = " ", header = None, names = ["kmer"])
     elif args.k==6:
-        my_alphabet_kmers = pd.read_csv(os.path.join(os.getcwd(), "test_kmers_6_sorted"), sep = " ", header = None, names = ["kmer"])
+        my_alphabet_kmers = pd.read_csv(os.path.join(vocab_path, "test_kmers_6_sorted"), sep = " ", header = None, names = ["kmer"])
     elif args.k==8:
-        my_alphabet_kmers = pd.read_csv(os.path.join(os.getcwd(), "vocab_generator_k8C_fin.fa"), sep = " ", header = None, names = ["kmer"])
+        my_alphabet_kmers = pd.read_csv(os.path.join(vocab_path, "vocab_generator_k8C_fin.fa"), sep = " ", header = None, names = ["kmer"])
     elif args.k==9:
-        my_alphabet_kmers = pd.read_csv(os.path.join(os.getcwd(), "vocab_generator_k9C_fin.fa"), sep = " ", header = None, names = ["kmer"])
+        my_alphabet_kmers = pd.read_csv(os.path.join(vocab_path, "vocab_generator_k9C_fin.fa"), sep = " ", header = None, names = ["kmer"])
     elif args.k==10:
-        my_alphabet_kmers = pd.read_csv(os.path.join(os.getcwd(), "vocab_generator_k10C_fin.fa"), sep = " ", header = None, names = ["kmer"])
+        my_alphabet_kmers = pd.read_csv(os.path.join(vocab_path, "vocab_generator_k10C_fin.fa"), sep = " ", header = None, names = ["kmer"])
 
 
 
@@ -897,7 +915,7 @@ def main():
                                                    'train_model_set_chunks   Trains all models for subtrees consecutively using chunked input\n'
                                                    'train_classifier_chunks  Train classifier model based on backbone subtrees (genomes split into chunks)\n'
                                        ,
-                                       help='Run kf2d {commands} [-h] for additional help',
+                                       help='Run kf2vec {commands} [-h] for additional help',
                                        dest='{commands}')
 
 
@@ -913,6 +931,7 @@ def main():
     ### python main.py get_frequencies - input_dir ../toy_example/train_tree_fna - output_dir ../toy_example/train_tree_kf
     ### python main.py get_frequencies -input_dir ../toy_example/test_fna -output_dir ../toy_example/test_kf
 
+    #  python -m kf2vec.main get_frequencies -input_dir /Users/nora/PycharmProjects/test_freq -output_dir /Users/nora/PycharmProjects/test_freq
     parser_freq = subparsers.add_parser('get_frequencies',
                                        description='Process a library of reference genome-skims or assemblies')
     parser_freq.add_argument('-input_dir',
@@ -935,8 +954,9 @@ def main():
 
     ### To invoke
     ### python main.py divide_tree -size 850 -tree /Users/nora/PycharmProjects/astral.rand.lpp.r100.EXTENDED.nwk
-
     ### python main.py divide_tree -tree ../toy_example/train_tree_newick/train_tree.nwk -size 2
+
+    ### python -m kf2vec.main divide_tree -tree ../toy_example/train_tree_newick/train_tree.nwk -size 2
 
     parser_div = subparsers.add_parser('divide_tree',
                                        description='Divides input phylogeny into subtrees.')
@@ -951,6 +971,7 @@ def main():
     ### To invoke
     ### python main.py scale_tree -tree /Users/nora/PycharmProjects/test_tree.nwk  -factor 100
     ### python main.py scale_tree -tree ../toy_example/train_tree_newick/train_tree.nwk  -factor 100
+    ### python -m kf2vec.main scale_tree -tree ../toy_example/train_tree_newick/train_tree.nwk  -factor 100
 
 
     parser_scale = subparsers.add_parser('scale_tree',
@@ -968,8 +989,11 @@ def main():
     ### python main.py get_distances -tree /Users/nora/PycharmProjects/test_tree.nwk  -subtrees  /Users/nora/PycharmProjects/my_test.subtrees -mode subtrees_only
 
     ### python main.py get_distances -tree ../toy_example/train_tree_newick/train_tree.nwk  -subtrees  ../toy_example/train_tree_newick/train_tree.subtrees -mode subtrees_only
-
     ### SINGLE CLADE: python main.py get_distances -tree ../toy_example/train_tree_newick_single_clade/train_tree.nwk  -subtrees  ../toy_example/train_tree_newick_single_clade/train_tree_single_clade.subtrees -mode subtrees_only
+    ###
+    ### python -m kf2vec.main get_distances -tree ../toy_example/train_tree_newick/train_tree.nwk  -subtrees  ../toy_example/train_tree_newick/train_tree.subtrees
+    ### SINGLE CLADE: python -m kf2vec.main get_distances -tree ../toy_example/train_tree_newick_single_clade/train_tree.nwk  -subtrees  ../toy_example/train_tree_newick_single_clade/train_tree_single_clade.subtrees
+
     parser_distances = subparsers.add_parser('get_distances',
                                              description='Computes distance matrices')
     parser_distances.add_argument('-tree', help='Input phylogeny (a .newick/.nwk format)', required=True)
@@ -993,6 +1017,8 @@ def main():
 
     ### python main.py train_classifier -input_dir ../toy_example/train_tree_kf -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 10 -o ../toy_example/train_tree_models
     ### python main.py train_classifier -input_dir ../toy_example/train_tree_kf -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 10  -hidden_sz 2000 -batch_sz 32 -o ../toy_example/train_tree_models
+
+    ### python -m kf2vec.main train_classifier -input_dir ../toy_example/train_tree_kf -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 10  -o ../toy_example/train_tree_models
 
     parser_trclas = subparsers.add_parser('train_classifier',
                                         description='Train classifier model based on backbone subtrees')
@@ -1029,6 +1055,7 @@ def main():
     ### python main.py classify -input_dir /Users/nora/PycharmProjects/test_tree_kf -model /Users/nora/PycharmProjects/my_toy_input  -o /Users/nora/PycharmProjects/my_toy_input
 
     ### python main.py classify -input_dir ../toy_example/test_kf -model ../toy_example/train_tree_models -o ../toy_example/test_results
+    ### python -m kf2vec.main classify -input_dir ../toy_example/test_kf -model ../toy_example/train_tree_models -o ../toy_example/test_results
 
     parser_classify = subparsers.add_parser('classify',
                                           description='Classifies query inputs using previously trained classifier model')
@@ -1054,6 +1081,8 @@ def main():
     ### python main.py train_model_set -input_dir ../toy_example/train_tree_kf -true_dist ../toy_example/train_tree_newick  -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 1 -clade 0 -o ../toy_example/train_tree_models
     ### WITH SPECIFIED TEST SET: python main.py train_model_set -input_dir ../toy_example/train_tree_kf -test_set /Users/nora/PycharmProjects/toy_example/test_set.txt -true_dist ../toy_example/train_tree_newick_single_clade  -subtrees ../toy_example/train_tree_newick_single_clade/train_tree_single_clade.subtrees -e 5 -clade 0 -o ../toy_example/train_tree_models
     ### python main.py train_model_set -input_dir ../toy_example/train_tree_kf -test_set /Users/nora/PycharmProjects/toy_example/test_set.txt -true_dist ../toy_example/train_tree_newick  -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 1 -clade 0 -o ../toy_example/train_tree_models
+
+    ### python -m kf2vec.main train_model_set -input_dir ../toy_example/train_tree_kf -test_set /Users/nora/PycharmProjects/toy_example/test_set.txt -true_dist ../toy_example/train_tree_newick  -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 1 -clade 0 -o ../toy_example/train_tree_models
     parser_train_model_set = subparsers.add_parser('train_model_set',
                                             description='Trains individual models for each subtree')
     parser_train_model_set.add_argument('-input_dir',
@@ -1095,8 +1124,9 @@ def main():
 
     ### To invoke
     ### python main.py query -input_dir /Users/nora/PycharmProjects/test_tree_kf  -model /Users/nora/PycharmProjects/my_toy_input  -classes /Users/nora/PycharmProjects/my_toy_input  -o /Users/nora/PycharmProjects/my_toy_input
-
     ### python main.py query -input_dir ../toy_example/test_kf  -model ../toy_example/train_tree_models -classes ../toy_example/test_results  -o ../toy_example/test_results -remap /Users/nora/Documents/ml_metagenomics/cami_long_reads/my_rename_test.tsv
+
+    ### python -m kf2vec.main query -input_dir /Users/nora/PycharmProjects/test_tree_kf  -model /Users/nora/PycharmProjects/my_toy_input  -classes /Users/nora/PycharmProjects/my_toy_input  -o /Users/nora/PycharmProjects/my_toy_input
 
     parser_query = subparsers.add_parser('query',
                                                    description='Query models')
@@ -1115,9 +1145,6 @@ def main():
                                         help='Output path')
 
     parser_query.set_defaults(func=query)
-
-
-
 
 
 
@@ -1233,9 +1260,11 @@ def main():
 
 
     ### To invoke
-    ### python main.py get_chunks -input_dir ../toy_example/train_tree_fna - output_dir.. / toy_example / train_tree_kf
+    ### python main.py get_chunks -input_dir ../toy_example/train_tree_fna - output_dir ../toy_example/train_tree_kf
     ### python main.py get_chunks -input_dir ../toy_example/test_fna -output_dir ../toy_example/test_kf
     ### python main.py get_chunks -input_dir ../filt_10k -output_dir ../filt_10k_out
+
+    ### python -m kf2vec.main get_chunks -input_dir ../toy_example/train_tree_fna -output_dir ../toy_example/train_tree_chunks
 
     parser_chunks = subparsers.add_parser('get_chunks',
                                         description='Process a library of reference genome-skims or assemblies')
@@ -1262,8 +1291,9 @@ def main():
 
     ### To invoke
     ### python main.py train_model_set_chunks -input_dir /Users/nora/PycharmProjects/train_tree_kf  -true_dist /Users/nora/PycharmProjects  -subtrees /Users/nora/PycharmProjects/my_test.subtrees -e 1 -o /Users/nora/PycharmProjects/my_toy_input
-
     ### python main.py train_model_set_chunks -input_dir /Users/nora/PycharmProjects/filt_10k_out -input_dir_fullgenomes /Users/nora/PycharmProjects/train_tree_kf -true_dist ../toy_example/train_tree_newick  -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 1 -o ../toy_example/train_tree_models -clade 1 0
+
+    ### python -m kf2vec.main train_model_set_chunks -input_dir /Users/nora/PycharmProjects/filt_10k_out -input_dir_fullgenomes /Users/nora/PycharmProjects/train_tree_kf -true_dist ../toy_example/train_tree_newick  -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 1 -o ../toy_example/train_tree_models -clade 1 0
 
     parser_train_model_set_chunks = subparsers.add_parser('train_model_set_chunks',
                                                    description='Trains individual models for each subtree using chunked genomes as input')
@@ -1321,7 +1351,8 @@ def main():
     ### python main.py train_classifier_chunks -input_dir /Users/nora/PycharmProjects/filt_10k_out -input_dir_fullgenomes /Users/nora/PycharmProjects/train_tree_kf -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 10  -o ../toy_example/train_tree_models
     ### with cap: python main.py train_classifier_chunks -input_dir /Users/nora/PycharmProjects/filt_10k_out -input_dir_fullgenomes /Users/nora/PycharmProjects/train_tree_kf -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 10 -cap  -o ../toy_example/train_tree_models
 
-
+    ### Module
+    ### with cap: python -m kf2vec.main train_classifier_chunks -input_dir /Users/nora/PycharmProjects/filt_10k_out -input_dir_fullgenomes /Users/nora/PycharmProjects/train_tree_kf -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 10 -cap  -o ../toy_example/train_tree_models
 
     parser_trclas_chunks = subparsers.add_parser('train_classifier_chunks',
                                           description='Train classifier model based on backbone subtrees (genomes split into chunks)')
@@ -1361,7 +1392,12 @@ def main():
 
 
     args = parser.parse_args()
-    args.func(args)
+    #args.func(args)
+
+    if hasattr(args, "func"):
+        args.func(args)
+    else:
+        parser.print_help()
 
 
 

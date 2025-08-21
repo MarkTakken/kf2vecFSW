@@ -21,8 +21,8 @@ import pandas as pd
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torchvision
-import torchvision.transforms as transforms
+#import torchvision
+#import torchvision.transforms as transforms
 from torch.utils.data.sampler import SubsetRandomSampler
 from torch.nn.parallel import DataParallel
 import sklearn
@@ -35,15 +35,20 @@ import multiprocessing as mp
 import sys
 import math
 import copy
-import models
-import datasets
-import losses
+from . import models
+from . import datasets
+from . import losses
+from . import parameter_inits
+from . import utils
+from .utils import *
+from . import weight_inits
+from .weight_inits import *
 from collections import deque
 
-import parameter_inits
 
-from utils import *
-from weight_inits import *
+
+
+
 
 
 
@@ -610,7 +615,7 @@ def train_model_set_chunks_func(features_folder, input_dir_fullgenomes, features
         logging.info("Dimensions of embedding output rows:{} cols:{}".format(len(df_embeddings), len(df_embeddings.columns)))
         df_embeddings.to_csv(os.path.join(model_filepath, 'embeddings_subtree_{}.csv'.format(c)), index=False, sep='\t', header = False)
 
-
+        """
         #######################################################################
         ##### Load last model #####
         # NEED TO CHECK IF FILE EXISTS
@@ -649,7 +654,7 @@ def train_model_set_chunks_func(features_folder, input_dir_fullgenomes, features
 
         df_outputs.to_csv(os.path.join(model_filepath, 'consec_distortions_subtree_{}.csv'.format(c)), index=False, sep='\t')
         df_embeddings.to_csv(os.path.join(model_filepath, 'consec_embeddings_subtree_{}.csv'.format(c)), index=False, sep='\t', header=False)
-
+        """
 
 
         logging.info('\n==> Training for subtree {} completed!\n'.format(c))

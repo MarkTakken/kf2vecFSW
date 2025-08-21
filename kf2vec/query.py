@@ -20,8 +20,8 @@ import pandas as pd
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torchvision
-import torchvision.transforms as transforms
+#import torchvision
+#import torchvision.transforms as transforms
 from torch.utils.data.sampler import SubsetRandomSampler
 import sklearn
 from sklearn.metrics import accuracy_score
@@ -31,14 +31,14 @@ from sklearn.metrics import accuracy_score
 import sys
 import math
 import copy
-import models
-import datasets
-import losses
-
-import parameter_inits
-
-from utils import *
-from weight_inits import *
+from . import models
+from . import datasets
+from . import losses
+from . import parameter_inits
+from . import utils
+from .utils import *
+from . import weight_inits
+from .weight_inits import *
 
 
 
