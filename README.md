@@ -226,14 +226,14 @@ While located in the code directory
 
 1. To extract k-mer frequencies from backbone and query sequences:
 ```
-kf2vec get_frequencies -input_dir ../toy_example/train_tree_fna -output_dir ../toy_example/train_tree_kf
-kf2vec get_frequencies -input_dir ../toy_example/test_fna -output_dir ../toy_example/test_kf
+kf2vec get_frequencies -input_dir /toy_example/train_tree_fna -output_dir /toy_example/train_tree_kf
+kf2vec get_frequencies -input_dir /toy_example/test_fna -output_dir /toy_example/test_kf
 ```
 
 2. To split the tree into subtrees and compute ground truth distance matrices:
 ```
-kf2vec divide_tree -tree ../toy_example/train_tree_newick/train_tree.nwk -size 2
-kf2vec get_distances -tree ../toy_example/train_tree_newick/train_tree.nwk  -subtrees  ../toy_example/train_tree_newick/train_tree.subtrees
+kf2vec divide_tree -tree /toy_example/train_tree_newick/train_tree.nwk -size 2
+kf2vec get_distances -tree /toy_example/train_tree_newick/train_tree.nwk  -subtrees  /toy_example/train_tree_newick/train_tree.subtrees
 ```
 The `divide tree` command generates a file with extension `.subtrees` where the clade number for each sample is specified. Columns are space seperated and can be modified manually.
 
@@ -243,22 +243,22 @@ If a distance matrix is required for the entire phylogeny, we suggest increasing
 
 3. To train the classifier model:
 ```
-kf2vec train_classifier -input_dir ../toy_example/train_tree_kf -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 10 -o ../toy_example/train_tree_models
+kf2vec train_classifier -input_dir /toy_example/train_tree_kf -subtrees /toy_example/train_tree_newick/train_tree.subtrees -e 10 -o /toy_example/train_tree_models
 ```
 
 4. To classify query sequences:
 ```
-kf2vec classify -input_dir ../toy_example/test_kf -model ../toy_example/train_tree_models -o ../toy_example/test_results
+kf2vec classify -input_dir /toy_example/test_kf -model /toy_example/train_tree_models -o /toy_example/test_results
 ```
 
 5. To train distance models:
 ```
-kf2vec train_model_set -input_dir ../toy_example/train_tree_kf -true_dist ../toy_example/train_tree_newick  -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 10 -o ../toy_example/train_tree_models
+kf2vec train_model_set -input_dir /toy_example/train_tree_kf -true_dist /toy_example/train_tree_newick  -subtrees /toy_example/train_tree_newick/train_tree.subtrees -e 10 -o /toy_example/train_tree_models
 ```
 
    Single clade example
 ```
-kf2vec train_model_set -input_dir ../toy_example/train_tree_kf -true_dist ../toy_example/train_tree_newick  -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 10 -clade 0 -o ../toy_example/train_tree_models
+kf2vec train_model_set -input_dir /toy_example/train_tree_kf -true_dist /toy_example/train_tree_newick  -subtrees /toy_example/train_tree_newick/train_tree.subtrees -e 10 -clade 0 -o /toy_example/train_tree_models
 ```
 
 6. To compute distances from backbone to query sequences:
