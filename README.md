@@ -11,7 +11,15 @@ Data and scripts are available in https://github.com/noraracht/kf2vec_data.
 INSTALLATION
 -----------
 
-We plan to put this on bioconda. For now, you can 
+## kf2vec is available on Bioconda and can be installed: 
+
+~~~bash
+# To create clean  environment
+conda create -n kf2vec_env python=3.11
+conda activate kf2vec_env
+conda install -c bioconda <package_name>
+
+## To run kf2vec as a module:
 
 1. Clone github repo
 2. Navigate to the directory kf2vec
