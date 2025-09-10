@@ -14,9 +14,11 @@ INSTALLATION
 ## kf2vec is available on Bioconda and can be installed: 
 
 ~~~bash
-# To create clean  environment
+# To create a clean  environment
 conda create -n kf2vec_env python=3.11
 conda activate kf2vec_env
+
+# To install package
 conda install -c bioconda kf2vec
 ~~~
 
