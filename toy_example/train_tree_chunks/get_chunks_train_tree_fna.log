@@ -13,10 +13,10 @@
 >>> Getting contig ids. Sample: G000830275.fna
 >>> Computing contig statistics. Sample: G000830275.fna
 
-==> Done chunk processing for G000830275.fna. Time: 00:00:05
+==> Done chunk processing for G000830275.fna. Time: 00:00:01
 
 
-==> Done computing k-mer frequences for G000830275.fna. Time: 00:00:13
+==> Done computing k-mer frequences for G000830275.fna. Time: 00:00:09
 
 
 ==> Start processing. Sample: G001940645.fna
@@ -27,10 +27,10 @@
 >>> Getting contig ids. Sample: G001940645.fna
 >>> Computing contig statistics. Sample: G001940645.fna
 
-==> Done chunk processing for G001940645.fna. Time: 05:17:23
+==> Done chunk processing for G001940645.fna. Time: 00:00:29
 
 
-==> Done computing k-mer frequences for G001940645.fna. Time: 05:17:57
+==> Done computing k-mer frequences for G001940645.fna. Time: 00:01:10
 
 
 ==> Start processing. Sample: G001871415.fna
@@ -41,10 +41,10 @@
 >>> Getting contig ids. Sample: G001871415.fna
 >>> Computing contig statistics. Sample: G001871415.fna
 
-==> Done chunk processing for G001871415.fna. Time: 05:18:12
+==> Done chunk processing for G001871415.fna. Time: 00:01:18
 
 
-==> Done computing k-mer frequences for G001871415.fna. Time: 05:18:21
+==> Done computing k-mer frequences for G001871415.fna. Time: 00:01:27
 
 
 ==> Start processing. Sample: G000402355.fna
@@ -55,10 +55,10 @@
 >>> Getting contig ids. Sample: G000402355.fna
 >>> Computing contig statistics. Sample: G000402355.fna
 
-==> Done chunk processing for G000402355.fna. Time: 05:18:30
+==> Done chunk processing for G000402355.fna. Time: 00:01:32
 
 
-==> Done computing k-mer frequences for G000402355.fna. Time: 05:18:36
+==> Done computing k-mer frequences for G000402355.fna. Time: 00:01:41
 
 
 ==> Start processing. Sample: G000830295.fna
@@ -69,11 +69,11 @@
 >>> Getting contig ids. Sample: G000830295.fna
 >>> Computing contig statistics. Sample: G000830295.fna
 
-==> Done chunk processing for G000830295.fna. Time: 05:18:37
+==> Done chunk processing for G000830295.fna. Time: 00:01:42
 
 
-==> Done computing k-mer frequences for G000830295.fna. Time: 05:18:44
+==> Done computing k-mer frequences for G000830295.fna. Time: 00:01:50
 
 
-==> Done getting chunks. Time: 05:18:44
+==> Done getting chunks. Time: 00:01:50
 

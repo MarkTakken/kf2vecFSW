@@ -1,8 +1,8 @@
 
 ==> Input arguments...
 
-Feature directory: ../toy_example/test_kf
-Model: ../toy_example/train_tree_models
+Feature directory: ./toy_example/test_kf
+Model: ./toy_example/train_tree_models
 Seed: 28
 
 ==> Building model...
@@ -17,4 +17,4 @@ Number of Classes: 2
 
 ==> Classification Completed!
 
-Time: 00:00:02
+Time: 00:00:00

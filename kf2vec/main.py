@@ -95,12 +95,13 @@ learning_rate_min = 3e-6    # 3e-6
 learning_rate_decay = 2000
 
 seed = 28
+default_block_sz = 4000
 
 chunk_sz = 10000 # Minimum chunk size
 chunk_cnt_thr = 5 # Minimum number of chunks to preserve genome in a dataset.
 
 
-__version__ = 'kf2vec 1.0.62'
+__version__ = 'kf2vec 0.1.3'
 
 
 # def print_hi(name):
@@ -334,7 +335,7 @@ def classify(args):
     # except OSError:
     #     pass
 
-    classify_func(args.input_dir, all_files, args.model, args.seed, args.o)
+    classify_func(args.input_dir, all_files, args.model, args.seed, args.o, args.block)
 
 
 def scale_tree(args):
@@ -473,7 +474,7 @@ def query(args):
     # frame = construct_input_dataframe(li)
     """
 
-    query_func(args.input_dir, all_files, args.model, args.classes, args.seed, args.o, args.remap)
+    query_func(args.input_dir, all_files, args.model, args.classes, args.seed, args.o, args.remap, args.block)
 
    # # Query last model if exist
    #  try:
@@ -1042,7 +1043,7 @@ def main():
     parser_trclas.add_argument('-seed', type=int, default=seed, help='Random seed. ' +
                                                                             'Default: {}'.format(seed))
     parser_trclas.add_argument('-mask', action='store_true',
-                             help='Masks low complexity k-mers in input features (reduces input dimension')
+                             help=argparse.SUPPRESS)#'Masks low complexity k-mers in input features (reduces input dimension'
     parser_trclas.add_argument('-o',
                                help='Model output path')
 
@@ -1063,6 +1064,8 @@ def main():
                                help='Directory of input k-mer frequencies for queries samples: assemblies or reads (dir of .kf files for queries)')
     parser_classify.add_argument('-model',
                                help='Classification model')
+    parser_classify.add_argument('-block', type=int, default=default_block_sz, help='Block size for file processing. ' +
+                                                                       'Default: {}'.format(default_block_sz))
     parser_classify.add_argument('-seed', type=int, default=seed, help='Random seed. ' +
                                                                      'Default: {}'.format(seed))
     parser_classify.add_argument('-o',
@@ -1126,6 +1129,7 @@ def main():
     ### python main.py query -input_dir /Users/nora/PycharmProjects/test_tree_kf  -model /Users/nora/PycharmProjects/my_toy_input  -classes /Users/nora/PycharmProjects/my_toy_input  -o /Users/nora/PycharmProjects/my_toy_input
     ### python main.py query -input_dir ../toy_example/test_kf  -model ../toy_example/train_tree_models -classes ../toy_example/test_results  -o ../toy_example/test_results -remap /Users/nora/Documents/ml_metagenomics/cami_long_reads/my_rename_test.tsv
 
+    ### python -m kf2vec.main query -input_dir /Users/nora/PycharmProjects/toy_example/test_kf  -model /Users/nora/PycharmProjects/my_toy_input  -classes /Users/nora/PycharmProjects/toy_example/test_results  -o /Users/nora/PycharmProjects/my_toy_input -block 3 -remap /Users/nora/Documents/ml_metagenomics/cami_long_reads/my_rename_test.tsv
     ### python -m kf2vec.main query -input_dir /Users/nora/PycharmProjects/test_tree_kf  -model /Users/nora/PycharmProjects/my_toy_input  -classes /Users/nora/PycharmProjects/my_toy_input  -o /Users/nora/PycharmProjects/my_toy_input
 
     parser_query = subparsers.add_parser('query',
@@ -1136,11 +1140,12 @@ def main():
                                         help='Directory of models and embeddings (dir of model_subtree_INDEX.ckpt and embeddings_subtree_INDEX.csv files for backbone)')
     parser_query.add_argument('-classes',
                                         help='Path to classification file with subtrees information obtained from classify command (classes.out file)')
+    parser_query.add_argument('-block', type=int, default=default_block_sz, help='Block size for file processing. ' +
+                                                                       'Default: {}'.format(default_block_sz))
     parser_query.add_argument('-seed', type=int, default=seed, help='Random seed. ' +
                                                                               'Default: {}'.format(seed))
     parser_query.add_argument('-remap',
-                                        help='Remap file with alterntive output names ("label" and "new_label" columns in .tsv format)')
-
+                                       help='Remap file with alterntive output names ("label" and "new_label" columns in .tsv format)')
     parser_query.add_argument('-o',
                                         help='Output path')
 
@@ -1382,7 +1387,7 @@ def main():
     parser_trclas_chunks.add_argument('-seed', type=int, default=seed, help='Random seed. ' +
                                                                      'Default: {}'.format(seed))
     parser_trclas_chunks.add_argument('-mask', action='store_true',
-                             help='Masks low complexity k-mers in input features (reduces input dimension)')
+                             help=argparse.SUPPRESS) #'Masks low complexity k-mers in input features (reduces input dimension)'
     parser_trclas_chunks.add_argument('-cap', action='store_true',
                                       help='Reduces memory consuption for input dataset (caps k-mer frequences at maximum of 255)')
     parser_trclas_chunks.add_argument('-o',

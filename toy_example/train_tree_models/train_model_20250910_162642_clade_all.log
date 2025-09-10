@@ -1,0 +1,124 @@
+
+==> Input arguments...
+
+Feature directory: ./toy_example/train_tree_kf
+Clades information: ./toy_example/train_tree_newick/train_tree.subtrees
+Ground truth directory: ./toy_example/train_tree_newick
+Test set: None
+
+==> Parameters...
+
+GPU Support: No
+Hidden Size fc1: 2048
+Embedding Size: 1024
+Starting Epoch: 0
+Total Epochs: 10
+Batch Size: 16
+Learning Rate: 1e-05
+Learning Rate Min: 3e-06
+Learning Rate Decay: 2000
+Clades to train: all
+Random Seed: 28
+Model save interval: unspecified
+
+==> Subtree training...
+
+Number of Classes: 2
+
+==> Working on subtree 0...
+
+
+==> Preparing Data...
+
+Dimensions of feature matrix rows: 2, cols: 8192
+Dimensions of true distance matrix rows: 2, cols: 2
+Number of Train Samples: 2
+
+==> Building model...
+
+
+==> Model parameters----------
+Total parameters: 18877440
+Trainable parameters: 18877440
+Time: 00:00:07
+
+==> Training model...
+
+Epoch [1/10], Step [1/1], Train loss: 25.90100483908602413408, Time: 00:00:15
+Epoch 1	                   LR:0.00001000000000000000
+Epoch [2/10], Step [1/1], Train loss: 17.53227632195063634413, Time: 00:00:24
+Epoch 2	                   LR:0.00001300000000000000
+Epoch [3/10], Step [1/1], Train loss: 10.65257737524317782629, Time: 00:00:32
+Epoch 3	                   LR:0.00001300000000000000
+Epoch [4/10], Step [1/1], Train loss: 6.57414733630371017625, Time: 00:00:41
+Epoch 4	                   LR:0.00001300000000000000
+Epoch [5/10], Step [1/1], Train loss: 4.21619576748292157475, Time: 00:00:49
+Epoch 5	                   LR:0.00001300000000000000
+Epoch [6/10], Step [1/1], Train loss: 2.84118491407640094693, Time: 00:00:58
+Epoch 6	                   LR:0.00001300000000000000
+Epoch [7/10], Step [1/1], Train loss: 2.03852158251844839398, Time: 00:01:06
+Epoch 7	                   LR:0.00001300000000000000
+Epoch [8/10], Step [1/1], Train loss: 1.56694396894163201495, Time: 00:01:14
+Epoch 8	                   LR:0.00001300000000000000
+Epoch [9/10], Step [1/1], Train loss: 1.27857087263631408192, Time: 00:01:22
+Epoch 9	                   LR:0.00001300000000000000
+Epoch [10/10], Step [1/1], Train loss: 1.08711219156853711176, Time: 00:01:31
+Epoch 10	                   LR:0.00001300000000000000
+Best Epoch [10/10], Lowest loss: 1.08711219156853711176
+Dimensions of distortion matrix rows:2 cols:3
+Dimensions of embedding output rows:2 cols:1025
+
+==> Training for subtree 0 completed!
+
+Time: 00:01:31
+
+==> Working on subtree 1...
+
+
+==> Preparing Data...
+
+Dimensions of feature matrix rows: 3, cols: 8192
+Dimensions of true distance matrix rows: 3, cols: 3
+Number of Train Samples: 3
+
+==> Building model...
+
+
+==> Model parameters----------
+Total parameters: 18877440
+Trainable parameters: 18877440
+Time: 00:01:38
+
+==> Training model...
+
+Epoch [1/10], Step [1/1], Train loss: 62.15397859827583459946, Time: 00:01:48
+Epoch 1	                   LR:0.00001000000000000000
+Epoch [2/10], Step [1/1], Train loss: 45.27667545728505871239, Time: 00:01:57
+Epoch 2	                   LR:0.00001300000000000000
+Epoch [3/10], Step [1/1], Train loss: 29.67767335430530195595, Time: 00:02:05
+Epoch 3	                   LR:0.00001300000000000000
+Epoch [4/10], Step [1/1], Train loss: 19.51338096499924645855, Time: 00:02:14
+Epoch 4	                   LR:0.00001300000000000000
+Epoch [5/10], Step [1/1], Train loss: 13.12840328127848721351, Time: 00:02:22
+Epoch 5	                   LR:0.00001300000000000000
+Epoch [6/10], Step [1/1], Train loss: 9.20021166092437425732, Time: 00:02:30
+Epoch 6	                   LR:0.00001300000000000000
+Epoch [7/10], Step [1/1], Train loss: 6.80589454696783935361, Time: 00:02:39
+Epoch 7	                   LR:0.00001300000000000000
+Epoch [8/10], Step [1/1], Train loss: 5.31375913921010578633, Time: 00:02:47
+Epoch 8	                   LR:0.00001300000000000000
+Epoch [9/10], Step [1/1], Train loss: 4.32830345094514878923, Time: 00:02:56
+Epoch 9	                   LR:0.00001300000000000000
+Epoch [10/10], Step [1/1], Train loss: 3.63026443188465863798, Time: 00:03:05
+Epoch 10	                   LR:0.00001300000000000000
+Best Epoch [10/10], Lowest loss: 3.63026443188465863798
+Dimensions of distortion matrix rows:3 cols:4
+Dimensions of embedding output rows:3 cols:1025
+
+==> Training for subtree 1 completed!
+
+Time: 00:03:05
+
+==> Training Completed!
+
+Time: 00:03:05

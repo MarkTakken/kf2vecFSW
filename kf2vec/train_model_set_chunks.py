@@ -480,8 +480,8 @@ def train_model_set_chunks_func(features_folder, input_dir_fullgenomes, features
                 # Save the model
                 actual_model = model.module
                 actual_model.to('cpu')
-                save_trained_model(model_name, input_size, hidden_size_fc1, embedding_size,
-                                   actual_model.state_dict(), model_filepath, model_filename="consec_model_subtree_{}.ckpt".format(c))
+                #save_trained_model(model_name, input_size, hidden_size_fc1, embedding_size,
+                #                   actual_model.state_dict(), model_filepath, model_filename="consec_model_subtree_{}.ckpt".format(c))
                 actual_model.to(device)
 
 
@@ -571,8 +571,8 @@ def train_model_set_chunks_func(features_folder, input_dir_fullgenomes, features
         # Access the underlying model
         actual_model = model.module
         actual_model.cpu()
-        save_trained_model(model_name, input_size, hidden_size_fc1, embedding_size,
-                           actual_model.state_dict(), model_filepath, model_filename="last_model_subtree_{}.ckpt".format(c))
+        #save_trained_model(model_name, input_size, hidden_size_fc1, embedding_size,
+        #                   actual_model.state_dict(), model_filepath, model_filename="last_model_subtree_{}.ckpt".format(c))
 
 
         #######################################################################

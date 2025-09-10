@@ -29,6 +29,7 @@ from sklearn.metrics import accuracy_score
 
 
 import sys
+import os
 import math
 import copy
 from . import models
@@ -39,7 +40,9 @@ from . import utils
 from .utils import *
 from . import weight_inits
 from .weight_inits import *
-
+import subprocess
+from io import StringIO
+import csv
 
 
 
@@ -47,28 +50,20 @@ from .weight_inits import *
 features_scaler = 1e4
 
 
-
-def query_func(features_folder, features_csv_file_list, model_file, classes, seed, output_folder, remap):
+def query_func(features_folder, features_csv_file_list, model_file, classes, seed, output_folder, remap, block_size):
 
     # Seed
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)  # if you are using multi-GPU.
-    # torch.backends.cudnn.benchmark = False
-    # torch.backends.cudnn.deterministic = True
-    # np.random.seed(seed)
+    torch.cuda.manual_seed_all(seed)
 
     since = time.time()
 
+    # logging setup
     level = logging.INFO
     format = '%(message)s'
     handlers = [logging.FileHandler(os.path.join(output_folder, 'query_run.log'), 'w+'), logging.StreamHandler()]
-
-    #logging.basicConfig(level=logging.NOTSET, format='%(asctime)s | %(levelname)s: %(message)s', handlers=handlers)
-
     logging.basicConfig(level=level, format=format, handlers=handlers)
-    # logging.info('Hey, this is working!')
-
 
     #######################################################################
     # Device configuration
@@ -76,181 +71,130 @@ def query_func(features_folder, features_csv_file_list, model_file, classes, see
 
     #######################################################################
     logging.info('\n==> Input arguments...\n')
-
     logging.info('Query directory: {}'.format(features_folder))
     logging.info('Model directory: {}'.format(model_file))
     logging.info('Class information: {}'.format(classes))
     logging.info('Seed: {}'.format(seed))
 
-
     #######################################################################
     # Read classification information
-
     logging.info('\n==> Querying...\n')
 
-
     classes_fname = "classes.out"
-    classification_df_all = pd.read_csv(os.path.join(classes, classes_fname) , sep="\t", header=0)
+    classification_df_all = pd.read_csv(os.path.join(classes, classes_fname), sep="\t", header=0)
 
-
-    # Intersect class information and input file list
     features_csv_basename = [os.path.basename(q).split(".kf")[0] for q in features_csv_file_list]
     classification_df = classification_df_all.loc[classification_df_all.genome.isin(features_csv_basename)]
 
     classification_df["top_class"] = classification_df["top_class"].astype(int)
     class_count = classification_df.top_class.unique()
 
-    # Compute total number of classes
     logging.info('Total subtrees to query: {}'.format(classification_df.top_class.unique().size))
 
+    #######################################################################
+    # Optional label remap dict
+    remap_dict = None
+    if remap:
+        try:
+            my_map_df = pd.read_csv(remap, sep="\t", header=0)
+            remap_dict = pd.Series(my_map_df.new_label.values, index=my_map_df.label).to_dict()
+            logging.info('Remap loaded: {} entries'.format(len(remap_dict)))
+        except Exception as e:
+            logging.warning('Could not read remap file {}: {}'.format(remap, e))
+            remap_dict = None
 
-    current_class_ids = {}
-
+    #######################################################################
+    # Process each clade
     for c in class_count:
+        current_clade = classification_df.loc[classification_df["top_class"] == c]
+        contig_ids = current_clade["genome"].to_list()
 
-        current_clade = classification_df.loc[classification_df["top_class"]==c]
-        current_class_ids[c] = current_clade["genome"].to_list()
+        if not contig_ids:
+            continue
 
-        #######################################################################
-        logging.info('\n==> Working on subtree {}...\n'.format(c))
+        logging.info('\n==> Working on subtree {} ({} contigs)...\n'.format(c, len(contig_ids)))
 
-
-        #######################################################################
-        # Prepare dataset
-        """
-        logging.info('\n==> Preparing Data...\n')
-
-        # Subset feature input for a given clade
-        feature_input = features_csv.loc[features_csv.index.isin(current_class_ids[c])]
-        feature_input = feature_input.iloc[:,:]*features_scaler
-        input_size = np.shape(feature_input)[1]
-
-        logging.info("Dimensions of feature matrix rows: {}, cols: {}".format(np.shape(feature_input)[0], np.shape(feature_input)[1]))
-        """
-        ########################################################################
-
-        # Model
-        logging.info('\n==> Building model...\n')
-
-
-        ##### Load model #####
-        # NEED TO CHECK IF FILE EXISTS
+        # Load trained model for this clade
         state = torch.load(os.path.join(model_file, "model_subtree_{}.ckpt".format(c)))
-
         input_size = state["model_input_size"]
         hidden_size_fc1 = state["model_hidden_size_fc1"]
         embedding_size = state["model_embedding_size"]
 
-        # Need to find a way to save model name as well
         model = models.NeuralNet(input_size, hidden_size_fc1, embedding_size)
         model.load_state_dict(state['state_dict'])
-        # model.to(device)
         model.to("cpu")
-
-        #######################################################################
-        # Training model
-        logging.info('\n==> Compute model output...\n')
-
-
-        # Read embeddings
-        df_embeddings = pd.read_csv(os.path.join(model_file, 'embeddings_subtree_{}.csv'.format(c)), sep="\t",
-                                    header=None, index_col=0)
-        embeddings_tensor = torch.from_numpy(df_embeddings.values).float()
-
-        # Get backbone names
-        backbone_names = df_embeddings.index.tolist()
-
-
-        # Compute model output
         model.eval()
 
-        with torch.no_grad():
+        # Load backbone embeddings for distance computation
+        df_embeddings = pd.read_csv(
+            os.path.join(model_file, 'embeddings_subtree_{}.csv'.format(c)),
+            sep="\t", header=None, index_col=0
+        )
+        embeddings_tensor = torch.from_numpy(df_embeddings.values).float()
+        backbone_names = df_embeddings.index.tolist()
 
-            for features_csv_file in current_class_ids[c]:
+        # Open output files once per clade (fast streaming writes)
+        dist_path = os.path.join(output_folder, f"apples_input_di_mtrx_subtree_{c}.csv")
+        emb_path = os.path.join(output_folder, f"embedding_subtree_{c}.emb")
 
-                feature_input = pd.read_csv(os.path.join(*[features_folder, features_csv_file + ".kf"]), index_col=None, header=None, sep=',')
-                feature_input.set_index(0, inplace=True)
-                feature_input = feature_input.iloc[:, :] * features_scaler
+        with open(dist_path, "w", newline="") as f_dist, open(emb_path, "w", newline="") as f_emb:
+            dist_writer = csv.writer(f_dist, delimiter="\t")
+            emb_writer = csv.writer(f_emb, delimiter="\t")
 
-                # Get names
-                query_names = feature_input.index.tolist()
+            # Distance matrix header: first cell empty, then backbone species labels
+            dist_writer.writerow([""] + backbone_names)
 
-                # Comput model outputs
-                outputs = model(torch.from_numpy(feature_input.values).float())
+            with torch.no_grad():
+                for z in range(0, len(contig_ids), block_size):
+                    chunk_files = contig_ids[z:z + block_size]
 
-                # Compute pairwise distance matrix
-                pairwise_outputs = torch.cdist(outputs, embeddings_tensor, p=2, compute_mode='donot_use_mm_for_euclid_dist')
-                pairwise_outputs2 = torch.square(pairwise_outputs)
-                pairwise_outputs3 = torch.div(pairwise_outputs2, 1.0) # NEED TO FIX BUT GOOD FOR Current TEST
+                    # Bulk-read features via `cat` for speed
+                    cat_filelist = [os.path.join(features_folder, f + ".kf") for f in chunk_files]
+                    cat_result = subprocess.run(["cat"] + cat_filelist, capture_output=True, text=True)
+                    feature_input = pd.read_csv(StringIO(cat_result.stdout), index_col=None, header=None, sep=',')
 
-                # Round distances < 1e10-6 to 0 so apples can handle such values
-                pairwise_outputs3 = torch.where(pairwise_outputs3 < 1.0e-6, torch.tensor(0, dtype=pairwise_outputs3.dtype),
-                                                pairwise_outputs3)
+                    # Set index to query label, scale features
+                    feature_input.set_index(0, inplace=True)
+                    feature_input = feature_input.iloc[:, :] * features_scaler
 
-                #######################################################################
-                # Compute distance matrix for single sample
+                    # Query labels (apply remap if provided)
+                    query_labels = feature_input.index.tolist()
+                    if remap_dict is not None:
+                        query_labels = [remap_dict.get(q, q) for q in query_labels]
 
-                # Detach gradient and convert to numpy
-                df_outputs = pd.DataFrame(pairwise_outputs3.detach().numpy())
+                    # Forward pass
+                    outputs = model(torch.from_numpy(feature_input.values).float())
 
-                # Attach species names
-                df_outputs.columns = backbone_names
-                df_outputs.insert(loc=0, column='', value=query_names)
+                    # Pairwise distances to backbone embeddings
+                    pairwise_outputs = torch.cdist(outputs, embeddings_tensor, p=2,
+                                                   compute_mode='donot_use_mm_for_euclid_dist')
+                    pairwise_outputs = torch.square(pairwise_outputs)
+                    pairwise_outputs = torch.where(
+                        pairwise_outputs < 1.0e-6,
+                        torch.tensor(0, dtype=pairwise_outputs.dtype),
+                        pairwise_outputs
+                    )
 
-                # Compute query embeddings
-                query_embeddings = pd.DataFrame(outputs.detach().numpy())
-                query_embeddings.insert(loc=0, column='', value=query_names)
+                    # Convert tensors to python lists once per chunk for fast writing
+                    dist_block = pairwise_outputs.detach().cpu().numpy().tolist()
+                    emb_block = outputs.detach().cpu().numpy().tolist()
 
-                #######################################################################
-                # Generate Apples input
+                    # Stream rows to files
+                    # Distance matrix rows: label + distances
+                    for lbl, row_vals in zip(query_labels, dist_block):
+                        dist_writer.writerow([lbl] + row_vals)
 
-                # Write to file
-                #logging.info("Dimensions of output matrix rows:{} cols:{}".format(len(df_outputs), len(df_outputs.columns)-1))
-                if remap:
+                    # Embedding rows: label + embedding vector; NO header
+                    for lbl, emb_vals in zip(query_labels, emb_block):
+                        emb_writer.writerow([lbl] + emb_vals)
 
-                    new_folder_name = "original_csv"
-                    if not os.path.exists(os.path.join(output_folder,  new_folder_name)):
-                        os.makedirs(os.path.join(output_folder,  new_folder_name))
-
-                    df_outputs.to_csv(os.path.join(output_folder,  new_folder_name, 'apples_input_di_mtrx_query_{}.csv'.format(features_csv_file)), index=False, sep='\t')
-                    query_embeddings.to_csv(os.path.join(output_folder,  new_folder_name, 'embedding_query_{}.emb'.format(features_csv_file)), index=False, sep='\t', header=False)
-
-
-                    my_map_df = pd.read_csv(remap, sep="\t", header=0)
-                    my_map_dict = pd.Series(my_map_df.new_label.values, index=my_map_df.label).to_dict()
-
-
-                    df_outputs.iloc[0, 0] = my_map_dict[query_names[0]]
-                    query_embeddings.iloc[0, 0] = my_map_dict[query_names[0]]
-
-                    df_outputs.to_csv(
-                        os.path.join(output_folder, 'apples_input_di_mtrx_query_{}.csv'.format(features_csv_file)),
-                        index=False, sep='\t')
-                    query_embeddings.to_csv(
-                        os.path.join(output_folder, 'embedding_query_{}.emb'.format(features_csv_file)), index=False,
-                        sep='\t', header=False)
-
-                else:
-
-                    df_outputs.to_csv(os.path.join(output_folder, 'apples_input_di_mtrx_query_{}.csv'.format(features_csv_file)), index=False, sep='\t')
-                    query_embeddings.to_csv(os.path.join(output_folder, 'embedding_query_{}.emb'.format(features_csv_file)), index=False, sep='\t', header=False)
+        logging.info('Wrote distance matrix: {}'.format(dist_path))
+        logging.info('Wrote embeddings: {}'.format(emb_path))
 
         logging.info('\n==> Computation is completed for subtree {}!\n'.format(c))
-
-        time_elapsed = time.time() - since
-        hrs, _min, sec = hms(time_elapsed)
+        hrs, _min, sec = hms(time.time() - since)
         logging.info('Time: {:02d}:{:02d}:{:02d}'.format(hrs, _min, sec))
 
-
-    logging.info('\n==> Computation Completed!\n'.format(c))
-
-    time_elapsed = time.time() - since
-    hrs, _min, sec = hms(time_elapsed)
-    logging.info('Time: {:02d}:{:02d}:{:02d}'.format(hrs, _min, sec))
-
-
-
-
-
-
-
+    logging.info('\n==> Computation Completed!\n')
+    hrs, _min, sec = hms(time.time() - since)
+    logging.info('Total time: {:02d}:{:02d}:{:02d}'.format(hrs, _min, sec))

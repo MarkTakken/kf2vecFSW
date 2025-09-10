@@ -1,0 +1,30 @@
+{
+    "fields": [
+        "edge_num",
+        "likelihood",
+        "like_weight_ratio",
+        "distal_length",
+        "pendant_length"
+    ],
+    "metadata": {
+        "invocation": "/Users/nora/anaconda3/envs/kf2vec_osx64_v2/bin/run_apples.py -d ./toy_example/test_results/apples_input_di_mtrx_query_G000196015.csv -t ./toy_example/train_tree_newick/train_tree.nwk -f 0 -b 5 -o ./toy_example/placement/G000196015.jplace"
+    },
+    "placements": [
+        {
+            "n": [
+                "G000196015"
+            ],
+            "p": [
+                [
+                    4,
+                    0.025207983899944487,
+                    1,
+                    0.0,
+                    58.27832786096204
+                ]
+            ]
+        }
+    ],
+    "tree": "(((G000830275:0.2{0},G000402355:0.3{1}):0.3{2},(G000830295:0.5{3},G001871415:0.3{4}):0.2{5}):0.3{6},G001940645:0.7{7});",
+    "version": 3
+}

@@ -1,9 +1,9 @@
 
 ==> Input arguments...
 
-Query directory: ../toy_example/test_kf
-Model directory: ../toy_example/train_tree_models
-Class information: ../toy_example/test_results
+Query directory: ./toy_example/test_kf
+Model directory: ./toy_example/train_tree_models
+Class information: ./toy_example/test_results
 Seed: 28
 
 ==> Querying...
@@ -34,8 +34,8 @@ Time: 00:00:00
 
 ==> Computation is completed for subtree 1!
 
-Time: 00:00:02
+Time: 00:00:00
 
 ==> Computation Completed!
 
-Time: 00:00:02
+Time: 00:00:00

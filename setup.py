@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="kf2vec",                               # Package name
-    version="1.0.62",                            # Initial version
+    version="0.1.3",                            # Initial version
     author="Eleonora Rachtman",
     author_email="noraracht@gmail.com",
     description="k-mer frequency to vector tool",
