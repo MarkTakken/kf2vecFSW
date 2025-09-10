@@ -243,34 +243,34 @@ If a distance matrix is required for the entire phylogeny, we suggest increasing
 
 4. To train the classifier model:
 ```
-python main.py train_classifier -input_dir ../toy_example/train_tree_kf -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 10 -o ../toy_example/train_tree_models
+kf2vec train_classifier -input_dir ../toy_example/train_tree_kf -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 10 -o ../toy_example/train_tree_models
 ```
 
 5. To classify query sequences:
 ```
-python main.py classify -input_dir ../toy_example/test_kf -model ../toy_example/train_tree_models -o ../toy_example/test_results
+kf2vec classify -input_dir ../toy_example/test_kf -model ../toy_example/train_tree_models -o ../toy_example/test_results
 ```
 
 6. To train distance models:
 ```
-python main.py train_model_set -input_dir ../toy_example/train_tree_kf -true_dist ../toy_example/train_tree_newick  -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 10 -o ../toy_example/train_tree_models
+kf2vec train_model_set -input_dir ../toy_example/train_tree_kf -true_dist ../toy_example/train_tree_newick  -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 10 -o ../toy_example/train_tree_models
 ```
 
    Single clade example
 ```
-python main.py train_model_set -input_dir ../toy_example/train_tree_kf -true_dist ../toy_example/train_tree_newick  -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 10 -clade 0 -o ../toy_example/train_tree_models
+kf2vec train_model_set -input_dir ../toy_example/train_tree_kf -true_dist ../toy_example/train_tree_newick  -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 10 -clade 0 -o ../toy_example/train_tree_models
 ```
 
 7. To compute distances from backbone to query sequences:
 ```
-python main.py query -input_dir ../toy_example/test_kf  -model ../toy_example/train_tree_models -classes ../toy_example/test_results  -o ../toy_example/test_results
+kf2vec query -input_dir ../toy_example/test_kf  -model ../toy_example/train_tree_models -classes ../toy_example/test_results  -o ../toy_example/test_results
 ```
 
 To scale the backbone phylogeny by a factor before splitting into subtrees: 
 ------------
 This step is OPTIONAL, but might be helpful in practice
 ```
-python main.py scale_tree -tree ../toy_example/train_tree_newick/train_tree.nwk  -factor 100
+kf2vec scale_tree -tree ../toy_example/train_tree_newick/train_tree.nwk  -factor 100
 ```
 This step scales all branch lengths in backbone phylogeny by a specific factor (x100 in the example above). Software adds the suffix `rFACTOR` (_r100.0) to the original phylogeny filename and saves the output into the same directory. 
 
@@ -280,19 +280,19 @@ While located in code directory
 
 1. To generate chunked input for backbone training sequences (this step takes a couple of minutes, run with -p 20 to speed up):
 ```
-python main.py get_chunks -input_dir ../toy_example/train_tree_fna -output_dir ../toy_example/train_tree_chunks
+kf2vec get_chunks -input_dir ../toy_example/train_tree_fna -output_dir ../toy_example/train_tree_chunks
 ```
 2. To train a classifier model for chunked input:
 ```
-python main.py train_classifier_chunks -input_dir ../toy_example/train_tree_chunks -input_dir_fullgenomes ../toy_example/train_tree_kf -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 10  -o ../toy_example/train_tree_models -cap
+kf2vec train_classifier_chunks -input_dir ../toy_example/train_tree_chunks -input_dir_fullgenomes ../toy_example/train_tree_kf -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 10  -o ../toy_example/train_tree_models -cap
 ```
 3. To train the embedder model for chunked input:
 ```
 # Train on clade 1 and 0
-python main.py train_model_set_chunks -input_dir ../toy_example/train_tree_chunks -input_dir_fullgenomes ../toy_example/train_tree_kf -true_dist ../toy_example/train_tree_newick  -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 10 -o ../toy_example/train_tree_models -clade 1 0
+kf2vec train_model_set_chunks -input_dir ../toy_example/train_tree_chunks -input_dir_fullgenomes ../toy_example/train_tree_kf -true_dist ../toy_example/train_tree_newick  -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 10 -o ../toy_example/train_tree_models -clade 1 0
 
 # Train only on clade 1
-python main.py train_model_set_chunks -input_dir ../toy_example/train_tree_chunks -input_dir_fullgenomes ../toy_example/train_tree_kf -true_dist ../toy_example/train_tree_newick  -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 10 -o ../toy_example/train_tree_models -clade 1
+kf2vec train_model_set_chunks -input_dir ../toy_example/train_tree_chunks -input_dir_fullgenomes ../toy_example/train_tree_kf -true_dist ../toy_example/train_tree_newick  -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 10 -o ../toy_example/train_tree_models -clade 1
 ```
 
 
