@@ -226,8 +226,8 @@ While located in the code directory
 
 1. To extract k-mer frequencies from backbone and query sequences:
 ```
-kf2vec get_frequencies -input_dir /toy_example/train_tree_fna -output_dir /toy_example/train_tree_kf
-kf2vec get_frequencies -input_dir /toy_example/test_fna -output_dir /toy_example/test_kf
+kf2vec get_frequencies -input_dir toy_example/train_tree_fna -output_dir toy_example/train_tree_kf
+kf2vec get_frequencies -input_dir toy_example/test_fna -output_dir toy_example/test_kf
 ```
 
 2. To split the tree into subtrees and compute ground truth distance matrices:
