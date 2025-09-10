@@ -295,7 +295,17 @@ kf2vec train_model_set_chunks -input_dir ../toy_example/train_tree_chunks -input
 # Train only on clade 1
 kf2vec train_model_set_chunks -input_dir ./toy_example/train_tree_chunks -input_dir_fullgenomes ./toy_example/train_tree_kf -true_dist ./toy_example/train_tree_newick  -subtrees ./toy_example/train_tree_newick/train_tree.subtrees -e 10 -o ./toy_example/train_tree_models -clade 1
 ```
+Query placement queries [GAPPA](https://github.com/lczech/gappa) and [APPLES](https://github.com/balabanmetin/apples):
+------------
+Both tools can be installed in the kf2vec environment. 
 
+```
+# To install GAPPA 
+conda install bioconda::gappa
+
+# To install APPLES 
+pip install apples
+```
 
 <!--
 To test wrapper functions on toy dataset:
