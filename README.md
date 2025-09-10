@@ -18,6 +18,7 @@ INSTALLATION
 conda create -n kf2vec_env python=3.11
 conda activate kf2vec_env
 conda install -c bioconda <package_name>
+~~~
 
 ## To run kf2vec as a module:
 
