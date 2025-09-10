@@ -226,14 +226,14 @@ While located in the code directory
 
 1. To extract k-mer frequencies from backbone and query sequences:
 ```
-kf2vec get_frequencies -input_dir toy_example/train_tree_fna -output_dir toy_example/train_tree_kf
-kf2vec get_frequencies -input_dir toy_example/test_fna -output_dir toy_example/test_kf
+kf2vec get_frequencies -input_dir ./toy_example/train_tree_fna -output_dir ./toy_example/train_tree_kf
+kf2vec get_frequencies -input_dir ./toy_example/test_fna -output_dir ./toy_example/test_kf
 ```
 
 2. To split the tree into subtrees and compute ground truth distance matrices:
 ```
-kf2vec divide_tree -tree toy_example/train_tree_newick/train_tree.nwk -size 2
-kf2vec get_distances -tree toy_example/train_tree_newick/train_tree.nwk  -subtrees  toy_example/train_tree_newick/train_tree.subtrees
+kf2vec divide_tree -tree ./toy_example/train_tree_newick/train_tree.nwk -size 2
+kf2vec get_distances -tree ./toy_example/train_tree_newick/train_tree.nwk  -subtrees  ./toy_example/train_tree_newick/train_tree.subtrees
 ```
 The `divide tree` command generates a file with extension `.subtrees` where the clade number for each sample is specified. Columns are space seperated and can be modified manually.
 
@@ -243,34 +243,34 @@ If a distance matrix is required for the entire phylogeny, we suggest increasing
 
 3. To train the classifier model:
 ```
-kf2vec train_classifier -input_dir toy_example/train_tree_kf -subtrees toy_example/train_tree_newick/train_tree.subtrees -e 10 -o toy_example/train_tree_models
+kf2vec train_classifier -input_dir ./toy_example/train_tree_kf -subtrees ./toy_example/train_tree_newick/train_tree.subtrees -e 10 -o ./toy_example/train_tree_models
 ```
 
 4. To classify query sequences:
 ```
-kf2vec classify -input_dir /toy_example/test_kf -model /toy_example/train_tree_models -o /toy_example/test_results
+kf2vec classify -input_dir ./toy_example/test_kf -model ./toy_example/train_tree_models -o ./toy_example/test_results
 ```
 
 5. To train distance models:
 ```
-kf2vec train_model_set -input_dir /toy_example/train_tree_kf -true_dist /toy_example/train_tree_newick  -subtrees /toy_example/train_tree_newick/train_tree.subtrees -e 10 -o /toy_example/train_tree_models
+kf2vec train_model_set -input_dir ./toy_example/train_tree_kf -true_dist ./toy_example/train_tree_newick  -subtrees ./toy_example/train_tree_newick/train_tree.subtrees -e 10 -o ./toy_example/train_tree_models
 ```
 
-   Single clade example
+   Single clade 0 example
 ```
-kf2vec train_model_set -input_dir /toy_example/train_tree_kf -true_dist /toy_example/train_tree_newick  -subtrees /toy_example/train_tree_newick/train_tree.subtrees -e 10 -clade 0 -o /toy_example/train_tree_models
+kf2vec train_model_set -input_dir ./toy_example/train_tree_kf -true_dist ./toy_example/train_tree_newick  -subtrees ./toy_example/train_tree_newick/train_tree.subtrees -e 10 -clade 0 -o ./toy_example/train_tree_models
 ```
 
 6. To compute distances from backbone to query sequences:
 ```
-kf2vec query -input_dir ../toy_example/test_kf  -model ../toy_example/train_tree_models -classes ../toy_example/test_results  -o ../toy_example/test_results
+kf2vec query -input_dir ./toy_example/test_kf  -model ./toy_example/train_tree_models -classes ./toy_example/test_results  -o ./toy_example/test_results
 ```
 
 To scale the backbone phylogeny by a factor before splitting into subtrees: 
 ------------
 This step is OPTIONAL, but might be helpful in practice
 ```
-kf2vec scale_tree -tree ../toy_example/train_tree_newick/train_tree.nwk  -factor 100
+kf2vec scale_tree -tree ./toy_example/train_tree_newick/train_tree.nwk  -factor 100
 ```
 This step scales all branch lengths in backbone phylogeny by a specific factor (x100 in the example above). Software adds the suffix `rFACTOR` (_r100.0) to the original phylogeny filename and saves the output into the same directory. 
 
@@ -280,19 +280,19 @@ While located in code directory
 
 1. To generate chunked input for backbone training sequences (this step takes a couple of minutes, run with -p 20 to speed up):
 ```
-kf2vec get_chunks -input_dir ../toy_example/train_tree_fna -output_dir ../toy_example/train_tree_chunks
+kf2vec get_chunks -input_dir ./toy_example/train_tree_fna -output_dir ./toy_example/train_tree_chunks
 ```
 2. To train a classifier model for chunked input:
 ```
-kf2vec train_classifier_chunks -input_dir ../toy_example/train_tree_chunks -input_dir_fullgenomes ../toy_example/train_tree_kf -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 10  -o ../toy_example/train_tree_models -cap
+kf2vec train_classifier_chunks -input_dir ./toy_example/train_tree_chunks -input_dir_fullgenomes ./toy_example/train_tree_kf -subtrees ./toy_example/train_tree_newick/train_tree.subtrees -e 10  -o ./toy_example/train_tree_models -cap
 ```
 3. To train the embedder model for chunked input:
 ```
 # Train on clade 1 and 0
-kf2vec train_model_set_chunks -input_dir ../toy_example/train_tree_chunks -input_dir_fullgenomes ../toy_example/train_tree_kf -true_dist ../toy_example/train_tree_newick  -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 10 -o ../toy_example/train_tree_models -clade 1 0
+kf2vec train_model_set_chunks -input_dir ../toy_example/train_tree_chunks -input_dir_fullgenomes ./toy_example/train_tree_kf -true_dist ./toy_example/train_tree_newick  -subtrees ./toy_example/train_tree_newick/train_tree.subtrees -e 10 -o ./toy_example/train_tree_models -clade 1 0
 
 # Train only on clade 1
-kf2vec train_model_set_chunks -input_dir ../toy_example/train_tree_chunks -input_dir_fullgenomes ../toy_example/train_tree_kf -true_dist ../toy_example/train_tree_newick  -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 10 -o ../toy_example/train_tree_models -clade 1
+kf2vec train_model_set_chunks -input_dir ./toy_example/train_tree_chunks -input_dir_fullgenomes ./toy_example/train_tree_kf -true_dist ./toy_example/train_tree_newick  -subtrees ./toy_example/train_tree_newick/train_tree.subtrees -e 10 -o ./toy_example/train_tree_models -clade 1
 ```
 
 
