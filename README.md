@@ -308,13 +308,12 @@ conda install bioconda::gappa
 ```
 To perform query placement, the user can run:
 ```
-run_apples.py -d "${file}" -t ../../species_level_tree_1178backbone.100x_noQueries.nwk  -f 0 -b 5 -o "${file%.*}.jplace
+run_apples.py -d ./toy_example/test_results/apples_input_di_mtrx_query_G000196015.csv -t ./toy_example/train_tree_newick/train_tree.nwk  -f 0 -b 5 -o ./toy_example/placement/G000196015.jplace
 ```
 To convert .jplace to .nwk, the user runs:
 ```
-gappa examine graft --jplace-path "${file}" --out-dir ./result
+gappa examine graft --jplace-path ./toy_example/placement/G000196015.jplace --out-dir ./toy_example/placement/result
 ```
-
 
 <!--
 To test wrapper functions on toy dataset:
