@@ -17,28 +17,29 @@ INSTALLATION
 # To create clean  environment
 conda create -n kf2vec_env python=3.11
 conda activate kf2vec_env
-conda install -c bioconda <package_name>
+conda install -c bioconda kf2vec
 ~~~
 
 ## To run kf2vec as a module:
 
 1. Clone github repo
 2. Navigate to the directory kf2vec
-3. Run to create an environment:
+3. Run to create an environment
+4. Run kf2vec as a module
 
 ~~~bash 
-conda env create -f=kf2vec_osx64_v2.yml
+conda env create -f=kf2vec_osx64_v2.yml -n kf2vec_env
 OR
-conda env create -f=kf2vec_osx64_v2_nobuilds.yml
+conda env create -f=kf2vec_osx64_v2_nobuilds.yml -n kf2vec_env
 ~~~
 
 Then, each time you want to run, activate an environment using
 ~~~bash
-conda activate kf2vec_osx64_v2
+conda activate kf2vec_env
+python -m kf2vec.main <function>
 ~~~
-
-Below, we assume you are in the `kf2vec` directory of the repository. This will be fixed in the future. 
-We tested our environment on macOS and Linux systems. We are working on creating Docker for other users. 
+Below, we assume you are in the `kf2vec` directory of the repository.
+We tested our software on macOS and Linux systems.
 
 COMMANDS
 -----------
