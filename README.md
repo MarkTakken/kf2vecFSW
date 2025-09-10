@@ -258,6 +258,7 @@ kf2vec train_model_set -input_dir ./toy_example/train_tree_kf -true_dist ./toy_e
 
    Single clade 0 example
 ```
+# Example of a command for training on a single clade 0
 kf2vec train_model_set -input_dir ./toy_example/train_tree_kf -true_dist ./toy_example/train_tree_newick  -subtrees ./toy_example/train_tree_newick/train_tree.subtrees -e 10 -clade 0 -o ./toy_example/train_tree_models
 ```
 
