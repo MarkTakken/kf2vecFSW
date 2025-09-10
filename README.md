@@ -87,15 +87,18 @@ Version number and help
 ------------
 To obtain the version number or invoke the description of commands:
 ```
- python main.py --version
- python main.py --help
+ kf2vec --version
+ kf2vec --help
+ OR
+ python -m kf2vec.main --version
+ python -m kf2vec.main --help
 ```
 
 Extracting k-mer frequencies
 ------------
 To obtain k-mer frequencies for backbone species and a query set, the user can execute the get_frequencies command:
 ```
- python main.py get_frequencies -input_dir $INPUT_DIR -output_dir $OUTPUT_DIR
+ kf2vec get_frequencies -input_dir $INPUT_DIR -output_dir $OUTPUT_DIR
 ```
 ###### Input: 
 **$INPUT_DIR** is an input directory that should contain genome sequences in .fastq/.fq/.fa/.fna/.fasta format. The optional parameter is **-k**, which is a k-mer length, set to 7 by default. The optional parameter is **-p** corresponds to a count of processors that the software can utilize to preprocess input sequences. Optional parameters include **-pseudocount** that adds 0.5 count to each k-mer count before normalization and **-raw_cnt** that outputs k-mer frequencies without normalization. At its core, kf2vec  uses [Jellyfish](https://github.com/gmarcais/Jellyfish) to efficiently count k-mers in sequence data.
@@ -106,7 +109,7 @@ Split phylogeny into subtrees
 ------------
 We recommend generating subtrees for a phylogeny with a number of leaves > 4000 using the `divide_tree` command:
 ```
- python main.py divide_tree -size $SUBTREE_SIZE -tree $INPUT_PHYLOGENY
+ kf2vec divide_tree -size $SUBTREE_SIZE -tree $INPUT_PHYLOGENY
 ```
 ###### Input: 
 **$INPUT_PHYLOGENY** is an input phylogenetic tree in .newick/.nwk format that should be split into multiple smaller subtrees. **-size** parameter is the user-specified subtree size. We set **-size** default to 850, but in practice, we recommend that the user define it. Internally, this command relies on [TreeCluster](https://github.com/niemasd/TreeCluster).
@@ -117,7 +120,7 @@ Ground truth distance matrix computation
 ------------
 To compute the distance matrix for the backbone phylogeny:
 ```
-python main.py get_distances -tree $INPUT_PHYLOGENY  -subtrees $FILE.subtrees
+kf2vec get_distances -tree $INPUT_PHYLOGENY  -subtrees $FILE.subtrees
 ```
 ###### Input: 
 **$INPUT_PHYLOGENY** is an input phylogenetic tree in .newick/.nwk format. **$FILE.subtrees** is the file where each input genome has an assigned subtree number. For now **-mode** parameter is set to `subtrees_only`.If a distance matrix corresponds to a single tree, it can be treated as a single clade (clade 0) and provided as input to this command. Under the hood, the distance computation command uses [TreeSwift](https://github.com/niemasd/TreeSwift). 
@@ -128,7 +131,7 @@ Scale phylogeny
 ------------
 To scale phylogeny by multiplying all branch lengths by a user-specified factor:
 ```
-python main.py scale_tree -tree $INPUT_PHYLOGENY  -factor $SCALE_VALUE
+kf2vec scale_tree -tree $INPUT_PHYLOGENY  -factor $SCALE_VALUE
 ```
 ###### Input: 
 **$INPUT_PHYLOGENY** is an input phylogenetic tree in .newick/.nwk format. **$SCALE_VALUE** is a scaling factor by which all branch lengths will be multiplied. Internally, it uses [TreeSwift](https://github.com/niemasd/TreeSwift). 
@@ -139,7 +142,7 @@ Training a classifier model
 ------------
 To train a classifier model, one can use the following command:
 ```
- python main.py train_classifier -input_dir $INPUT_DIR -subtrees $FILE.subtrees -e 2000 -o $OUTPUT_DIR
+ kf2vec train_classifier -input_dir $INPUT_DIR -subtrees $FILE.subtrees -e 2000 -o $OUTPUT_DIR
 ```
 ###### Input: 
 **$INPUT_DIR** is an input directory that should contain a k-mer frequency count file for backbone species in `.kf` format (output of the `get_frequencies` command). **$FILE.subtrees** is the file where each input genome has an assigned target subtree number. Optional model training parameters include: **-e** number of epochs (default is 2000), **-hidden_sz** dimension of hidden layer (default value is 2048), and **-batch_sz** identifies batch size (default value is 16). **-lr**, **-lr_min** and **-lr_decay** refer to starting learning rate, minimum allowed learning rate, and learning rate decay values. We suggest keeping learning rate parameters at their default values unless the user has a specific need to modify them. **-seed** is the random seed (default 28). **$OUTPUT_DIR** is the directory where the classifier model will be saved once training is complete. 
@@ -150,7 +153,7 @@ Classification of queries into subtrees
 ------------
 Command to classify query sequences into subtrees:
 ```
- python main.py classify -input_dir $INPUT_DIR -model $MODEL_DIR -o $OUTPUT_DIR
+ kf2vec classify -input_dir $INPUT_DIR -model $MODEL_DIR -o $OUTPUT_DIR
 ```
 ###### Input: 
 **$INPUT_DIR** is an input directory that should contain a k-mer frequency count file for the query species in `.kf` format (output of the `get_frequencies` command). **$MODEL_DIR** is the folder where model named `classifier_model.ckpt` is located. **$OUTPUT_DIR** is the directory where `classes.out` will be stored. **-seed** is the random seed (default 28). 
@@ -161,7 +164,7 @@ Train models for subtrees
 ------------
 To train:
 ```
-python main.py train_model_set -input_dir $INPUT_DIR  -true_dist $TRUE_DIST_MATRIX_DIR  -subtrees $FILE.subtrees -e 4000 -o $OUTPUT_DIR
+kf2vec train_model_set -input_dir $INPUT_DIR  -true_dist $TRUE_DIST_MATRIX_DIR  -subtrees $FILE.subtrees -e 4000 -o $OUTPUT_DIR
 ```
 ###### Input: 
 **$INPUT_DIR** is an input directory that should contain k-mer frequency count file for backbone species in `.kf` format (output of the `get_frequencies` command). **$TRUE_DIST_MATRIX_DIR** is a directory where true distance matrices are located (location where `*subtree_INDEX.di_mtrx` files are). **$FILE.subtrees** is the file where each input genome has an assigned subtree number. Model training parameters include: **-e** number of epochs (default is 8000), **-hidden_sz** is a dimension of hidden layer in the model (default is 2048), **-embed_sz** is embedding dimension (default is 1024),  **-batch_sz** identifies batch size (default values is 16). **-lr**, **-lr_min**, and **-lr_decay** refer to starting learning rate, minimum allowed learning rate, and learning rate decay values. We suggest keeping learning rate parameters at their default values unless user has a specific need to modify them. **-clade** is the clade number to train the model for. If the clade number is not provided, the models are trained for all clades consecutively. **-seed** is the random seed (default is 28). **$OUTPUT_DIR** is the directory where `model_subtree_INDEX.ckpt` will be stored. 
@@ -172,7 +175,7 @@ Query subtree models
 ------------
 To query models:
 ```
-python main.py query -input_dir $INPUT_DIR  -model $MODEL_DIR  -classes $CLASSES_DIR -o $OUTPUT_DIR
+kf2vec query -input_dir $INPUT_DIR  -model $MODEL_DIR  -classes $CLASSES_DIR -o $OUTPUT_DIR
 ```
 ###### Input: 
 **$INPUT_DIR** is an input directory that should contain k-mer frequency count files for the query species in `.kf` format (output of `get_frequencies` command). **$MODEL_DIR** is the folder where model named `model_subtree_INDEX.ckpt` is located. **$CLASSES_DIR** is the directory where `classes.out` is located. **$OUTPUT_DIR** is the directory where `apples_input_di_mtrx_query_INDEX.csv` will be stored. **-seed** is the random seed (default is 28).
@@ -183,7 +186,7 @@ Generate chunked inputs for backbone species in the training set
 ------------
 To obtain k-mer frequencies for backbone species and a query set, the user can execute the get_frequencies command:
 ```
- python main.py get_chunks -input_dir $INPUT_DIR -output_dir $OUTPUT_DIR
+ kf2vec get_chunks -input_dir $INPUT_DIR -output_dir $OUTPUT_DIR
 ```
 ###### Input: 
 **$INPUT_DIR** is an input directory that should contain genome sequences in .fastq/.fq/.fa/.fna/.fasta format. The optional parameter is **-k**, which is a k-mer length, set to 7 by default. The optional parameter is **-p** corresponds to a count of processors that the software can utilize to preprocess input sequences. Optional parameters include **-pseudocount** that adds 0.5 count to each k-mer count before normalization.
@@ -194,7 +197,7 @@ Training a classifier model for chunked input
 ------------
 To train a classifier model for chunked input, one can use the following command:
 ```
- python main.py train_classifier_chunks -input_dir $INPUT_DIR -input_dir_fullgenomes $INPUT_DIR_FULL -subtrees $FILE.subtrees -e 2000 -o $OUTPUT_DIR
+ kf2vec train_classifier_chunks -input_dir $INPUT_DIR -input_dir_fullgenomes $INPUT_DIR_FULL -subtrees $FILE.subtrees -e 2000 -o $OUTPUT_DIR
 ```
 ###### Input: 
 **$INPUT_DIR** is an input directory that should contain a k-mer counts file (chunked input) for backbone species in `.kf` format (output of the `get_chunks` command). **$INPUT_DIR_FULL** is an input directory that should contain the k-mer frequencies for full genomes of backbone species in `.kf` format (output of the `get_frequencies` command). **$FILE.subtrees** is the file where each input genome has an assigned target subtree number. Optional model training parameters include: **-e** number of epochs (default is 2000), **-hidden_sz** dimension of hidden layer (default value is 2048) and **-batch_sz** identifies batch size (default value is 16). **-lr**, **-lr_min** and **-lr_decay** refer to starting learning rate, minimum allowed learning rate, and learning rate decay values. We suggest keeping learning rate parameters at their default values unless the user has a specific need to modify them. **-seed** is the random seed (default 28). **-cap** reads input values as an unsigned 8-bit integer to reduce memory consumption while training. **$OUTPUT_DIR** is the directory where the classifier model will be saved once training is complete. 
@@ -205,7 +208,7 @@ Training embedder models for chunked input
 ------------
 To train:
 ```
-python main.py train_model_set_chunks -input_dir $INPUT_DIR -input_dir_fullgenomes $INPUT_DIR_FULL -true_dist $TRUE_DIST_MATRIX_DIR  -subtrees $FILE.subtrees -e 4000 -o $OUTPUT_DIR
+kf2vec train_model_set_chunks -input_dir $INPUT_DIR -input_dir_fullgenomes $INPUT_DIR_FULL -true_dist $TRUE_DIST_MATRIX_DIR  -subtrees $FILE.subtrees -e 4000 -o $OUTPUT_DIR
 ```
 ###### Input: 
 **$INPUT_DIR** is an input directory that should contain k-mer counts files (chunked input) for backbone species in `.kf` format (output of the `get_chunks` command). **$INPUT_DIR_FULL** is an input directory that should contain the k-mer frequencies for full genomes of backbone species in `.kf` format (output of the `get_frequencies` command). **$TRUE_DIST_MATRIX_DIR** is a directory where true distance matrices are located (location where `*subtree_INDEX.di_mtrx` files are). **$FILE.subtrees** is the file where each input genome has an assigned subtree number. Model training parameters include: **-e** number of epochs (default is 8000), **-hidden_sz** is a dimension of hidden layer in the model (default is 2048), **-embed_sz** is embedding dimension (default is 1024),  **-batch_sz** identifies batch size (default values is 16). **-lr**, **-lr_min**, and **-lr_decay** refer to starting learning rate, minimum allowed learning rate, and learning rate decay values. We suggest keeping learning rate parameters at their default values unless user has a specific need to modify them. **-clade** is the clade number to train the model for. If the clade number is not provided, the models are trained for all clades consecutively. **-seed** is the random seed (default is 28). **-cap** reads input values as an unsigned 8-bit integer to reduce memory consumption while training. **$OUTPUT_DIR** is the directory where `model_subtree_INDEX.ckpt` will be stored. 
@@ -223,14 +226,14 @@ While located in the code directory
 
 1. To extract k-mer frequencies from backbone and query sequences:
 ```
-python main.py get_frequencies -input_dir ../toy_example/train_tree_fna -output_dir ../toy_example/train_tree_kf
-python main.py get_frequencies -input_dir ../toy_example/test_fna -output_dir ../toy_example/test_kf
+kf2vec get_frequencies -input_dir ../toy_example/train_tree_fna -output_dir ../toy_example/train_tree_kf
+kf2vec get_frequencies -input_dir ../toy_example/test_fna -output_dir ../toy_example/test_kf
 ```
 
 3. To split the tree into subtrees and compute ground truth distance matrices:
 ```
-python main.py divide_tree -tree ../toy_example/train_tree_newick/train_tree.nwk -size 2
-python main.py get_distances -tree ../toy_example/train_tree_newick/train_tree.nwk  -subtrees  ../toy_example/train_tree_newick/train_tree.subtrees
+kf2vec divide_tree -tree ../toy_example/train_tree_newick/train_tree.nwk -size 2
+kf2vec get_distances -tree ../toy_example/train_tree_newick/train_tree.nwk  -subtrees  ../toy_example/train_tree_newick/train_tree.subtrees
 ```
 The `divide tree` command generates a file with extension `.subtrees` where the clade number for each sample is specified. Columns are space seperated and can be modified manually.
 
