@@ -101,10 +101,9 @@ To obtain k-mer frequencies for backbone species and a query set, the user can e
  kf2vec get_frequencies -input_dir $INPUT_DIR -output_dir $OUTPUT_DIR
 ```
 ###### Input: 
-**$INPUT_DIR** is an input directory that should contain genome sequences in .fastq/.fq/.fa/.fna/.fasta format. The optional parameter is 
-**-k**, which is a k-mer length, set to 7 by default. The optional parameter is **-p** corresponds to a count of processors that the software can utilize to preprocess input sequences. Optional parameters include **-pseudocount** that adds 0.5 count to each k-mer count before normalization and **-raw_cnt** that outputs k-mer frequencies without normalization. At its core, kf2vec  uses [Jellyfish](https://github.com/gmarcais/Jellyfish) to efficiently count k-mers in sequence data.
+**$INPUT_DIR** is an input directory that should contain genome sequences in .fastq/.fq/.fa/.fna/.fasta format. The optional parameter is **-k**, which is a k-mer length, set to 7 by default. The optional parameter **-p** corresponds to a count of processors that the software can utilize to preprocess input sequences. Optional parameters include **-pseudocount** that adds 0.5 count to each k-mer count before normalization and **-raw_cnt** that outputs k-mer frequencies without normalization. At its core, kf2vec  uses [Jellyfish](https://github.com/gmarcais/Jellyfish) to efficiently count k-mers in sequence data.
 ###### Output: 
-This command generates normalized k-mer frequencies for every entry in the **$INPUT_DIR**. For every entry it outputs corresponding single file (comma delimited) with extention `.kf` that is stored in **$OUTPUT_DIR**.
+This command generates normalized k-mer frequencies for every entry in the **$INPUT_DIR**. For every entry, it outputs a corresponding single file (comma-delimited) with extension `.kf` that is stored in **$OUTPUT_DIR**.
 
 Split phylogeny into subtrees 
 ------------
@@ -124,7 +123,7 @@ To compute the distance matrix for the backbone phylogeny:
 kf2vec get_distances -tree $INPUT_PHYLOGENY  -subtrees $FILE.subtrees
 ```
 ###### Input: 
-**$INPUT_PHYLOGENY** is an input phylogenetic tree in .newick/.nwk format. **$FILE.subtrees** is the file where each input genome has an assigned subtree number. For now **-mode** parameter is set to `subtrees_only`.If a distance matrix corresponds to a single tree, it can be treated as a single clade (clade 0) and provided as input to this command. Under the hood, the distance computation command uses [TreeSwift](https://github.com/niemasd/TreeSwift). 
+**$INPUT_PHYLOGENY** is an input phylogenetic tree in .newick/.nwk format. **$FILE.subtrees** is the file where each input genome has an assigned subtree number. If a distance matrix corresponds to a single tree, it can be treated as a single clade (clade 0) and provided as input to this command. Under the hood, the distance computation command uses [TreeSwift](https://github.com/niemasd/TreeSwift). 
 ###### Output: 
 The output is saved in a directory where the phylogeny is located.
 
@@ -159,7 +158,7 @@ Command to classify query sequences into subtrees:
 ###### Input: 
 **$INPUT_DIR** is an input directory that should contain a k-mer frequency count file for the query species in `.kf` format (output of the `get_frequencies` command). **$MODEL_DIR** is the folder where model named `classifier_model.ckpt` is located. **$OUTPUT_DIR** is the directory where `classes.out` will be stored. **-seed** is the random seed (default 28). 
 ###### Output: 
-The output is `classes.out` tab-delimited file stored in a user-defined repository. The file contains information about each query sequence, assigned subtree number, and probability values for top as well as all other classes.
+The output is a `classes.out` tab-delimited file stored in a user-defined repository. The file contains information about each query sequence, assigned subtree number, and probability values for top as well as all other classes.
 
 Train models for subtrees
 ------------
@@ -168,7 +167,7 @@ To train:
 kf2vec train_model_set -input_dir $INPUT_DIR  -true_dist $TRUE_DIST_MATRIX_DIR  -subtrees $FILE.subtrees -e 4000 -o $OUTPUT_DIR
 ```
 ###### Input: 
-**$INPUT_DIR** is an input directory that should contain k-mer frequency count file for backbone species in `.kf` format (output of the `get_frequencies` command). **$TRUE_DIST_MATRIX_DIR** is a directory where true distance matrices are located (location where `*subtree_INDEX.di_mtrx` files are). **$FILE.subtrees** is the file where each input genome has an assigned subtree number. Model training parameters include: **-e** number of epochs (default is 8000), **-hidden_sz** is a dimension of hidden layer in the model (default is 2048), **-embed_sz** is embedding dimension (default is 1024),  **-batch_sz** identifies batch size (default values is 16). **-lr**, **-lr_min**, and **-lr_decay** refer to starting learning rate, minimum allowed learning rate, and learning rate decay values. We suggest keeping learning rate parameters at their default values unless user has a specific need to modify them. **-clade** is the clade number to train the model for. If the clade number is not provided, the models are trained for all clades consecutively. **-seed** is the random seed (default is 28). **$OUTPUT_DIR** is the directory where `model_subtree_INDEX.ckpt` will be stored. 
+**$INPUT_DIR** is an input directory that should contain a k-mer frequency count file for backbone species in `.kf` format (output of the `get_frequencies` command). **$TRUE_DIST_MATRIX_DIR** is a directory where true distance matrices are located (the location where `*subtree_INDEX.di_mtrx` files are). **$FILE.subtrees** is the file where each input genome has an assigned subtree number. Model training parameters include: **-e** number of epochs (default is 8000), **-hidden_sz** is a dimension of the hidden layer in the model (default is 2048), **-embed_sz** is the embedding dimension (default is 1024),  **-batch_sz** identifies batch size (default value is 16). **-lr**, **-lr_min**, and **-lr_decay** refer to starting learning rate, minimum allowed learning rate, and learning rate decay values. We suggest keeping learning rate parameters at their default values unless the user has a specific need to modify them. **-clade** is the clade number to train the model for. If the clade number is not provided, the models are trained for all clades consecutively. **-seed** is the random seed (default is 28). **$OUTPUT_DIR** is the directory where `model_subtree_INDEX.ckpt` will be stored. 
 ###### Output: 
 The output is a set of trained models for each input subtree.
 
@@ -190,7 +189,7 @@ To obtain k-mer frequencies for backbone species and a query set, the user can e
  kf2vec get_chunks -input_dir $INPUT_DIR -output_dir $OUTPUT_DIR
 ```
 ###### Input: 
-**$INPUT_DIR** is an input directory that should contain genome sequences in .fastq/.fq/.fa/.fna/.fasta format. The optional parameter is **-k**, which is a k-mer length, set to 7 by default. The optional parameter is **-p** corresponds to a count of processors that the software can utilize to preprocess input sequences. Optional parameters include **-pseudocount** that adds 0.5 count to each k-mer count before normalization.
+**$INPUT_DIR** is an input directory that should contain genome sequences in .fastq/.fq/.fa/.fna/.fasta format. The optional parameter is **-k**, which is a k-mer length, set to 7 by default. The optional parameter **-p** corresponds to a count of processors that the software can utilize to preprocess input sequences. Optional parameters include **-pseudocount** that adds 0.5 count to each k-mer count before normalization.
 ###### Output: 
 This command generates a single chunked sample for every entry in the **$INPUT_DIR**. Each output is a matrix where rows correspond to generated chunks and columns are k-mer count for a corresponding chunk (not normalized). Every output file has an extension `.kf` added and is stored in **$OUTPUT_DIR**.
 
@@ -212,7 +211,7 @@ To train:
 kf2vec train_model_set_chunks -input_dir $INPUT_DIR -input_dir_fullgenomes $INPUT_DIR_FULL -true_dist $TRUE_DIST_MATRIX_DIR  -subtrees $FILE.subtrees -e 4000 -o $OUTPUT_DIR
 ```
 ###### Input: 
-**$INPUT_DIR** is an input directory that should contain k-mer counts files (chunked input) for backbone species in `.kf` format (output of the `get_chunks` command). **$INPUT_DIR_FULL** is an input directory that should contain the k-mer frequencies for full genomes of backbone species in `.kf` format (output of the `get_frequencies` command). **$TRUE_DIST_MATRIX_DIR** is a directory where true distance matrices are located (location where `*subtree_INDEX.di_mtrx` files are). **$FILE.subtrees** is the file where each input genome has an assigned subtree number. Model training parameters include: **-e** number of epochs (default is 8000), **-hidden_sz** is a dimension of hidden layer in the model (default is 2048), **-embed_sz** is embedding dimension (default is 1024),  **-batch_sz** identifies batch size (default values is 16). **-lr**, **-lr_min**, and **-lr_decay** refer to starting learning rate, minimum allowed learning rate, and learning rate decay values. We suggest keeping learning rate parameters at their default values unless user has a specific need to modify them. **-clade** is the clade number to train the model for. If the clade number is not provided, the models are trained for all clades consecutively. **-seed** is the random seed (default is 28). **-cap** reads input values as an unsigned 8-bit integer to reduce memory consumption while training. **$OUTPUT_DIR** is the directory where `model_subtree_INDEX.ckpt` will be stored. 
+**$INPUT_DIR** is an input directory that should contain k-mer counts files (chunked input) for backbone species in `.kf` format (output of the `get_chunks` command). **$INPUT_DIR_FULL** is an input directory that should contain the k-mer frequencies for full genomes of backbone species in `.kf` format (output of the `get_frequencies` command). **$TRUE_DIST_MATRIX_DIR** is a directory where true distance matrices are located (the location where `*subtree_INDEX.di_mtrx` files are). **$FILE.subtrees** is the file where each input genome has an assigned subtree number. Model training parameters include: **-e** number of epochs (default is 8000), **-hidden_sz** is a dimension of the hidden layer in the model (default is 2048), **-embed_sz** is the embedding dimension (default is 1024),  **-batch_sz** identifies batch size (default value is 16). **-lr**, **-lr_min**, and **-lr_decay** refer to starting learning rate, minimum allowed learning rate, and learning rate decay values. We suggest keeping learning rate parameters at their default values unless the user has a specific need to modify them. **-clade** is the clade number to train the model for. If the clade number is not provided, the models are trained for all clades consecutively. **-seed** is the random seed (default is 28). **-cap** reads input values as an unsigned 8-bit integer to reduce memory consumption while training. **$OUTPUT_DIR** is the directory where `model_subtree_INDEX.ckpt` will be stored. 
 ###### Output: 
 The output is a set of trained models for each input subtree.
 
