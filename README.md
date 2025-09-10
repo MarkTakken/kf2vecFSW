@@ -230,7 +230,7 @@ kf2vec get_frequencies -input_dir ../toy_example/train_tree_fna -output_dir ../t
 kf2vec get_frequencies -input_dir ../toy_example/test_fna -output_dir ../toy_example/test_kf
 ```
 
-3. To split the tree into subtrees and compute ground truth distance matrices:
+2. To split the tree into subtrees and compute ground truth distance matrices:
 ```
 kf2vec divide_tree -tree ../toy_example/train_tree_newick/train_tree.nwk -size 2
 kf2vec get_distances -tree ../toy_example/train_tree_newick/train_tree.nwk  -subtrees  ../toy_example/train_tree_newick/train_tree.subtrees
@@ -241,17 +241,17 @@ Get distances takes as input phylogeny `.nwk` and subtree information `.subtrees
 
 If a distance matrix is required for the entire phylogeny, we suggest increasing the `size` parameter in a divide tree such that entire tree is represented as a single clade 0 and compute the distance matrix. See example file `train_tree_single_clade.subtrees`.
 
-4. To train the classifier model:
+3. To train the classifier model:
 ```
 kf2vec train_classifier -input_dir ../toy_example/train_tree_kf -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 10 -o ../toy_example/train_tree_models
 ```
 
-5. To classify query sequences:
+4. To classify query sequences:
 ```
 kf2vec classify -input_dir ../toy_example/test_kf -model ../toy_example/train_tree_models -o ../toy_example/test_results
 ```
 
-6. To train distance models:
+5. To train distance models:
 ```
 kf2vec train_model_set -input_dir ../toy_example/train_tree_kf -true_dist ../toy_example/train_tree_newick  -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 10 -o ../toy_example/train_tree_models
 ```
@@ -261,7 +261,7 @@ kf2vec train_model_set -input_dir ../toy_example/train_tree_kf -true_dist ../toy
 kf2vec train_model_set -input_dir ../toy_example/train_tree_kf -true_dist ../toy_example/train_tree_newick  -subtrees ../toy_example/train_tree_newick/train_tree.subtrees -e 10 -clade 0 -o ../toy_example/train_tree_models
 ```
 
-7. To compute distances from backbone to query sequences:
+6. To compute distances from backbone to query sequences:
 ```
 kf2vec query -input_dir ../toy_example/test_kf  -model ../toy_example/train_tree_models -classes ../toy_example/test_results  -o ../toy_example/test_results
 ```
