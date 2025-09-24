@@ -290,7 +290,7 @@ kf2vec train_classifier_chunks -input_dir ./toy_example/train_tree_chunks -input
 3. To train the embedder model for chunked input:
 ```
 # Train on clade 1 and 0
-kf2vec train_model_set_chunks -input_dir ../toy_example/train_tree_chunks -input_dir_fullgenomes ./toy_example/train_tree_kf -true_dist ./toy_example/train_tree_newick  -subtrees ./toy_example/train_tree_newick/train_tree.subtrees -e 10 -o ./toy_example/train_tree_models -clade 1 0
+kf2vec train_model_set_chunks -input_dir ./toy_example/train_tree_chunks -input_dir_fullgenomes ./toy_example/train_tree_kf -true_dist ./toy_example/train_tree_newick  -subtrees ./toy_example/train_tree_newick/train_tree.subtrees -e 10 -o ./toy_example/train_tree_models -clade 1 0
 
 # Train only on clade 1
 kf2vec train_model_set_chunks -input_dir ./toy_example/train_tree_chunks -input_dir_fullgenomes ./toy_example/train_tree_kf -true_dist ./toy_example/train_tree_newick  -subtrees ./toy_example/train_tree_newick/train_tree.subtrees -e 10 -o ./toy_example/train_tree_models -clade 1
