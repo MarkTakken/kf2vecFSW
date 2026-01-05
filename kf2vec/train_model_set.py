@@ -69,9 +69,32 @@ features_scaler = 1e4
 #weight_decay = 1e-5     # L2 regularization
 #resume = False
 
+def pad_collate(batch):
+    """
+    Custom collate function to handle variable-length FSW matrices.
+    Pads the sequence dimension (dim 0) with zeros.
+    """
+    # batch is a list of tuples: (data_matrix, label)
+    # data_matrix shape: (N_kmers, k+1)
+    
+    data = [torch.from_numpy(item[0]) for item in batch]
+    targets = [item[1] for item in batch]
+    
+    # Pad sequences so they are all the same length as the longest one in this batch
+    # padding_value=0 is safe because the last column is 'weight'. 
+    # A weight of 0 means the FSW layer will ignore these padded rows.
+    data_padded = torch.nn.utils.rnn.pad_sequence(data, batch_first=True, padding_value=0)
+    
+    targets = torch.tensor(targets)
+    
+    return data_padded, targets
 
+def pad_input(input):
+    input_torch = [torch.from_numpy(item) for item in input]
+    return torch.nn.utils.rnn.pad_sequence(input_torch, batch_first=True, padding_value=0)
 
-def train_model_set_func(features_folder, features_csv, clades_info, true_dist_matrix, num_epochs, hidden_size_fc1, embedding_size, in_batch_sz, in_lr, in_lr_min, in_lr_decay, clades_to_train, seed, model_filepath, test_IDs_lst, save_interval):
+def train_model_set_func(features_folder, features_csv, clades_info, true_dist_matrix, num_epochs, hidden_size_fc1, embedding_size, in_batch_sz, in_lr, in_lr_min, in_lr_decay, clades_to_train, seed, model_filepath, test_IDs_lst, save_interval,
+                         use_fsw=True, k=7, base_dim=4, fswout_dim=512):
 
     # Seed
     torch.manual_seed(seed)
@@ -167,7 +190,11 @@ def train_model_set_func(features_folder, features_csv, clades_info, true_dist_m
 
     # Making a dataframe of sample names
     feat_basename = [os.path.basename(i) for i in features_csv]
-    feat_samples_names = [f.rsplit('.kf', 1)[0] for f in feat_basename]
+    if use_fsw:
+        suffix = f"_k{k}.npy"
+        feat_samples_names = [f.replace(suffix, "") for f in feat_basename]
+    else:
+        feat_samples_names = [f.rsplit('.kf', 1)[0] for f in feat_basename]
     df_feat_samples_names = pd.DataFrame(feat_samples_names)
     df_feat_samples_names.set_index(0, inplace=True)
 
@@ -200,8 +227,11 @@ def train_model_set_func(features_folder, features_csv, clades_info, true_dist_m
         feature_input = df_feat_samples_names.loc[df_feat_samples_names.index.isin(current_class_ids[c])]
 
         # Get input dimensions
-        tmp_feature_input = pd.read_csv(features_csv[0], index_col=0, header=None, sep=',')
-        input_size = np.shape(tmp_feature_input)[1]
+        if use_fsw:
+            input_size = k + 1
+        else:
+            tmp_feature_input = pd.read_csv(features_csv[0], index_col=0, header=None, sep=',')
+            input_size = np.shape(tmp_feature_input)[1]
 
         # Subset feature input for a given clade
         # feature_input = features_csv.loc[features_csv.index.isin(current_class_ids[c])]
@@ -245,15 +275,21 @@ def train_model_set_func(features_folder, features_csv, clades_info, true_dist_m
         #feature_input_numpy = np.empty((len(backbone_names), input_size))
 
         # Read samples into list
-        feature_input_list = [os.path.join(*[path_name, i + ext_name]) for i in backbone_names]
+        actual_ext = f"_k{k}.npy" if use_fsw else ext_name
+        feature_input_list = [os.path.join(*[path_name, i + actual_ext]) for i in backbone_names]
 
-        with mp.Pool() as pool:
-            embed_lst_tmp = pool.map(my_read_csv, feature_input_list)
+        if use_fsw:
+            logging.info("Loading .npy files for FSW...")
+            feature_input_numpy = [np.load(f) for f in feature_input_list]
+        else:
+            with mp.Pool() as pool:
+                embed_lst_tmp = pool.map(my_read_csv, feature_input_list)
 
-        # Concatenate list of dataframes and turn into numpy array
-        embed_lst_df = pd.concat(embed_lst_tmp)
-        embed_lst_df = embed_lst_df.iloc[:, :] * features_scaler
-        feature_input_numpy = embed_lst_df.to_numpy()
+            # Concatenate list of dataframes and turn into numpy array
+            embed_lst_df = pd.concat(embed_lst_tmp)
+            embed_lst_df = embed_lst_df.apply(pd.to_numeric, errors='coerce').fillna(0)
+            embed_lst_df = embed_lst_df.iloc[:, :] * features_scaler
+            feature_input_numpy = embed_lst_df.to_numpy()
 
 
         # Populate  numpy array
@@ -294,10 +330,21 @@ def train_model_set_func(features_folder, features_csv, clades_info, true_dist_m
 
 
         # Data loader
-        train_loader = torch.utils.data.DataLoader(training_set, **params)
+        if use_fsw:
+            train_loader = torch.utils.data.DataLoader(training_set, 
+                                                       batch_size=params['batch_size'], 
+                                                       shuffle=params['shuffle'], 
+                                                       num_workers=params['num_workers'],
+                                                       collate_fn=pad_collate)
+            if test_size != 0:
+                test_loader = torch.utils.data.DataLoader(test_set, 
+                                                          batch_size=params['batch_size'],
+                                                          collate_fn=pad_collate)
+        else:
+            train_loader = torch.utils.data.DataLoader(training_set, **params)
 
-        if test_size != 0:
-            test_loader = torch.utils.data.DataLoader(test_set, **params)
+            if test_size != 0:
+                test_loader = torch.utils.data.DataLoader(test_set, **params)
         #val_loader = torch.utils.data.DataLoader(val_set, **params)
 
 
@@ -317,9 +364,16 @@ def train_model_set_func(features_folder, features_csv, clades_info, true_dist_m
         # Model
         logging.info('\n==> Building model...\n')
 
-        #model = models.NeuralNet(input_size, hidden_size_fc1, embedding_size).to(device)
-        model = models.NeuralNet(input_size, hidden_size_fc1, embedding_size)
-        model_name = "NeuralNet"
+        if use_fsw:
+            model = models.NeuralNetFSW(k, base_dim, fswout_dim, hidden_size_fc1, embedding_size)
+            model_name = "NeuralNetFSW"
+        else:
+            #model = models.NeuralNet(input_size, hidden_size_fc1, embedding_size).to(device)
+            model = models.NeuralNet(input_size, hidden_size_fc1, embedding_size)
+            model_name = "NeuralNet"
+
+        print(model_name)
+        
         model = DataParallel(model).to(device)
 
 
@@ -386,7 +440,10 @@ def train_model_set_func(features_folder, features_csv, clades_info, true_dist_m
 
 
             for i, (images, labels) in enumerate(train_loader):
-                images = images.reshape(-1, input_size).to(device)
+                if use_fsw:
+                    images = images.to(device)
+                else:
+                    images = images.reshape(-1, input_size).to(device)
 
                 real_dist = pairwise_true_dist(labels, pdf_sorted).to(device) # get true distances
 
@@ -542,7 +599,10 @@ def train_model_set_func(features_folder, features_csv, clades_info, true_dist_m
         ##### Load best model #####
         # NEED TO CHECK IF FILE EXISTS
         # Not sure if I need to redefine to get rid of DataParallel
-        model = models.NeuralNet(input_size, hidden_size_fc1, embedding_size)
+        if use_fsw:
+            model = models.NeuralNetFSW(k, base_dim, fswout_dim, hidden_size_fc1, embedding_size)
+        else:
+            model = models.NeuralNet(input_size, hidden_size_fc1, embedding_size)
         state = torch.load(os.path.join(model_filepath, "model_subtree_{}.ckpt".format(c)))
 
         model.load_state_dict(state['state_dict'])
@@ -554,7 +614,10 @@ def train_model_set_func(features_folder, features_csv, clades_info, true_dist_m
 
         with torch.no_grad():
             #outputs = model(torch.from_numpy(feature_input.values).float())
-            outputs = model(torch.from_numpy(feature_input_numpy).float())
+            if use_fsw:
+                outputs = model(pad_input(feature_input_numpy))
+            else:
+                outputs = model(torch.from_numpy(feature_input_numpy).float())
 
 
         # Detach gradient and convert to numpy

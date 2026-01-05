@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from fswlib import FSWEmbedding
 #import torchvision
 #import torchvision.transforms as transforms
 
@@ -47,6 +48,24 @@ class NeuralNet(nn.Module):
         
         return out
 
+class NeuralNetFSW(nn.Module):
+    def __init__(self, k, base_dim, fswout_dim, hidden_size, finalout_dim):
+        super(NeuralNetFSW, self).__init__()
+        self.lookup = nn.Parameter(torch.randn(4, base_dim))
+        self.fc1 = nn.Linear(fswout_dim, hidden_size)
+        self.relu = nn.ReLU()
+        self.fc2 = nn.Linear(hidden_size, finalout_dim)
+        self.fsw = FSWEmbedding(d_in=k*base_dim, d_out=fswout_dim, frequency_init="even", minimize_slice_coherence=True)
+    
+    def forward(self, X):
+        kmers = X[...,:-1].long()
+        weights = X[...,-1]
+        base_embed = self.lookup[kmers].view(kmers.shape[0], kmers.shape[1], -1)
+        fsw_embed = self.fsw(base_embed, weights)
+        out = self.fc1(fsw_embed)
+        out = self.relu(out)
+        out = self.fc2(out)
+        return out
 
 class NeuralNetClassifier(nn.Module):
     def __init__(self, input_size, hidden_size, embedding_size, num_classes):

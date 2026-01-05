@@ -78,8 +78,8 @@ from . import train_classifier_model_chunks
 from .train_classifier_model_chunks import *
 
 default_k_len = 7
-min_k_len = 3
-max_k_len = 10
+min_k_len = 2
+max_k_len = 31
 default_subtree_sz = 850
 default_multiplier = 100
 
@@ -109,6 +109,79 @@ __version__ = 'kf2vec 0.1.3'
 #     print(f'Hi, {name}')  # Press ⌘F8 to toggle the breakpoint.
 
 
+def get_kmers(args):
+    """
+    Processes FASTA files using Jellyfish, encodes k-mers numerically,
+    and saves normalized frequency matrices as .npy files.
+    """
+    # Base mapping: 0=A, 1=T, 2=C, 3=G
+    base_map = {b'A': 0, b'T': 1, b'C': 2, b'G': 3}
+
+    # Ensure output directory exists
+    if not os.path.exists(args.output_dir):
+        os.makedirs(args.output_dir)
+
+    fasta_files = glob.glob(os.path.join(args.input_dir, "*.fna"))
+
+    for fna_path in fasta_files:
+        base_name = os.path.basename(fna_path).replace(".fna", "")
+        jf_file = f"{base_name}.jf"
+        
+        print(f"--- Processing {base_name} ---")
+
+        try:
+            # 1. Run Jellyfish Count
+            # -C for canonical, -s 100M for hash size, -t 10 for threads
+            subprocess.run([
+                "jellyfish", "count", "-m", str(args.k), "-s", "100M", 
+                "-t", "10", "-C", fna_path, "-o", jf_file
+            ], check=True)
+
+            # 2. Run Jellyfish Dump
+            # -c includes counts, -t is tab-delimited
+            dump_process = subprocess.Popen(
+                ["jellyfish", "dump", "-c", "-t", jf_file],
+                stdout=subprocess.PIPE, text=True
+            )
+
+            kmer_data = []
+            counts = []
+
+            # 3. Parse Dump and Encode
+            for line in dump_process.stdout:
+                seq, count = line.strip().split()
+                # Check for standard DNA bases only
+                if all(base in "ATCG" for base in seq):
+                    # Convert string to list of integers based on your mapping
+                    encoded_seq = [base_map[b.encode()] for b in seq]
+                    kmer_data.append(encoded_seq)
+                    counts.append(int(count))
+
+            if not kmer_data:
+                print(f"Warning: No valid ATCG k-mers found in {base_name}")
+                continue
+
+            # 4. Create the Nx(k+1) Matrix
+            kmer_matrix = np.array(kmer_data, dtype=np.float32)
+            counts_array = np.array(counts, dtype=np.float32)
+            
+            # Normalize frequencies
+            normalized_freqs = counts_array / np.sum(counts_array)
+            
+            # Combine: Append frequencies as the (k+1)-th column
+            final_matrix = np.column_stack((kmer_matrix, normalized_freqs))
+
+            # 5. Save as .npy
+            output_path = os.path.join(args.output_dir, f"{base_name}_k{args.k}.npy")
+            np.save(output_path, final_matrix)
+            print(f"Saved: {output_path} (Shape: {final_matrix.shape})")
+
+        except subprocess.CalledProcessError as e:
+            print(f"Error running Jellyfish on {fna_path}: {e}")
+        finally:
+            # 6. Clean up intermediate Jellyfish files
+            if os.path.exists(jf_file):
+                os.remove(jf_file)
 
 def divide_tree(args):
 
@@ -435,7 +508,11 @@ def train_model_set(args):
 
     # Concatenate kmer frequencies into single dataframe
     print("Running train_model_set")
-    all_files = glob.glob(os.path.join(args.input_dir, "*.kf"))
+    print("***********", args.use_fsw)
+    if args.use_fsw:
+        all_files = glob.glob(os.path.join(args.input_dir, "*.npy"))
+    else:
+        all_files = glob.glob(os.path.join(args.input_dir, "*.kf"))
 
 
     # li = []
@@ -451,8 +528,8 @@ def train_model_set(args):
     # # Concatenate inputs into single dataframe
     # # frame = construct_input_dataframe(li)
 
-
-    train_model_set_func(args.input_dir, all_files, args.subtrees, args.true_dist, args.e, args.hidden_sz, args.embed_sz, args.batch_sz, args.lr, args.lr_min, args.lr_decay, args.clade, args.seed, args.o, args.test_set, args.save_interval)
+    train_model_set_func(args.input_dir, all_files, args.subtrees, args.true_dist, args.e, args.hidden_sz, args.embed_sz, args.batch_sz, args.lr, args.lr_min, args.lr_decay, args.clade, args.seed, args.o, args.test_set, args.save_interval,
+                         use_fsw=args.use_fsw)
 
 
 
@@ -899,7 +976,8 @@ def main():
     parser.add_argument('-v', '--version', action='version', help='print the current version', version='{}'.format(__version__))
     # parser.add_argument('--debug', action='store_true', help='Print the traceback when an exception is raised')
     subparsers = parser.add_subparsers(title='commands',
-                                       description='get_frequencies          Extract k-mer frequency from a reference genome-skims or assemblies\n'
+                                       description='get_kmers                Extract k-mers and their frequencies from FASTA files\n'
+                                                   'get_frequencies          Extract k-mer frequency from a reference genome-skims or assemblies\n'
                                                    'divide_tree              Divides input phylogeny into subtrees\n'
                                                    'scale_tree               Multiplies all edges in the tree by multiplier\n'
                                                    'get_distances            Compute distance matrices\n'
@@ -919,6 +997,16 @@ def main():
                                        help='Run kf2vec {commands} [-h] for additional help',
                                        dest='{commands}')
 
+
+    parser_kmer = subparsers.add_parser('get_kmers',
+                                        description='Extract kmers and frequencies from FASTA files')
+    parser_kmer.add_argument('-input_dir',
+                             help='Directory of input genomes or assemblies (dir of .fastq/.fq/.fa/.fna/.fasta files)')
+    parser_kmer.add_argument('-output_dir',
+                             help='Directory for k-mer frequency outputs (dir for .kf files)')
+    parser_kmer.add_argument('-k', type=int, choices=list(range(min_k_len, max_k_len+1)), default=default_k_len, help='K-mer length [{}-{}]. '.format(min_k_len, max_k_len) +
+                                                                                         'Default: {}'.format(default_k_len), metavar='K')
+    parser_kmer.set_defaults(func=get_kmers)
 
     # Get_frequencies command subparser
 
@@ -1118,6 +1206,7 @@ def main():
                                                                        'Default: {}'.format(seed))
     parser_train_model_set.add_argument('-o',
                                help='Model output path')
+    parser_train_model_set.add_argument('-use_fsw', action='store_true', help="FSW or original model?")
 
     parser_train_model_set.set_defaults(func=train_model_set)
 
