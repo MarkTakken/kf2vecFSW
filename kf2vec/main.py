@@ -508,8 +508,7 @@ def train_model_set(args):
 
     # Concatenate kmer frequencies into single dataframe
     print("Running train_model_set")
-    print("***********", args.use_fsw)
-    if args.use_fsw:
+    if not(args.no_fsw):
         all_files = glob.glob(os.path.join(args.input_dir, "*.npy"))
     else:
         all_files = glob.glob(os.path.join(args.input_dir, "*.kf"))
@@ -529,7 +528,7 @@ def train_model_set(args):
     # # frame = construct_input_dataframe(li)
 
     train_model_set_func(args.input_dir, all_files, args.subtrees, args.true_dist, args.e, args.hidden_sz, args.embed_sz, args.batch_sz, args.lr, args.lr_min, args.lr_decay, args.clade, args.seed, args.o, args.test_set, args.save_interval,
-                         use_fsw=args.use_fsw)
+                         use_fsw=not(args.no_fsw), base_dim=args.base_dim, fswout_dim=args.fswout_dim)
 
 
 
@@ -1206,7 +1205,9 @@ def main():
                                                                        'Default: {}'.format(seed))
     parser_train_model_set.add_argument('-o',
                                help='Model output path')
-    parser_train_model_set.add_argument('-use_fsw', action='store_true', help="FSW or original model?")
+    parser_train_model_set.add_argument('-no_fsw', action='store_true', help="Keep original model")
+    parser_train_model_set.add_argument('-fswout_dim', type=int, default=512)
+    parser_train_model_set.add_argument('-base_dim', type=int, default=4)
 
     parser_train_model_set.set_defaults(func=train_model_set)
 

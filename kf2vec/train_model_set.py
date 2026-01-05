@@ -94,7 +94,7 @@ def pad_input(input):
     return torch.nn.utils.rnn.pad_sequence(input_torch, batch_first=True, padding_value=0)
 
 def train_model_set_func(features_folder, features_csv, clades_info, true_dist_matrix, num_epochs, hidden_size_fc1, embedding_size, in_batch_sz, in_lr, in_lr_min, in_lr_decay, clades_to_train, seed, model_filepath, test_IDs_lst, save_interval,
-                         use_fsw=True, k=7, base_dim=4, fswout_dim=512):
+                         use_fsw=True, base_dim=4, fswout_dim=512):
 
     # Seed
     torch.manual_seed(seed)
@@ -187,11 +187,18 @@ def train_model_set_func(features_folder, features_csv, clades_info, true_dist_m
 
     current_class_ids = {}
 
+    # Get input dimensions
+    if use_fsw:
+        tmp_feature_input = np.load(features_csv[0])
+        input_size = tmp_feature_input.shape[-1]
+    else:
+        tmp_feature_input = pd.read_csv(features_csv[0], index_col=0, header=None, sep=',')
+        input_size = np.shape(tmp_feature_input)[1]
 
     # Making a dataframe of sample names
     feat_basename = [os.path.basename(i) for i in features_csv]
     if use_fsw:
-        suffix = f"_k{k}.npy"
+        suffix = f"_k{input_size-1}.npy"
         feat_samples_names = [f.replace(suffix, "") for f in feat_basename]
     else:
         feat_samples_names = [f.rsplit('.kf', 1)[0] for f in feat_basename]
@@ -225,13 +232,6 @@ def train_model_set_func(features_folder, features_csv, clades_info, true_dist_m
 
         # Subset feature input for a given clade
         feature_input = df_feat_samples_names.loc[df_feat_samples_names.index.isin(current_class_ids[c])]
-
-        # Get input dimensions
-        if use_fsw:
-            input_size = k + 1
-        else:
-            tmp_feature_input = pd.read_csv(features_csv[0], index_col=0, header=None, sep=',')
-            input_size = np.shape(tmp_feature_input)[1]
 
         # Subset feature input for a given clade
         # feature_input = features_csv.loc[features_csv.index.isin(current_class_ids[c])]
@@ -275,7 +275,7 @@ def train_model_set_func(features_folder, features_csv, clades_info, true_dist_m
         #feature_input_numpy = np.empty((len(backbone_names), input_size))
 
         # Read samples into list
-        actual_ext = f"_k{k}.npy" if use_fsw else ext_name
+        actual_ext = f"_k{input_size-1}.npy" if use_fsw else ext_name
         feature_input_list = [os.path.join(*[path_name, i + actual_ext]) for i in backbone_names]
 
         if use_fsw:
@@ -365,7 +365,7 @@ def train_model_set_func(features_folder, features_csv, clades_info, true_dist_m
         logging.info('\n==> Building model...\n')
 
         if use_fsw:
-            model = models.NeuralNetFSW(k, base_dim, fswout_dim, hidden_size_fc1, embedding_size)
+            model = models.NeuralNetFSW(input_size-1, base_dim, fswout_dim, hidden_size_fc1, embedding_size)
             model_name = "NeuralNetFSW"
         else:
             #model = models.NeuralNet(input_size, hidden_size_fc1, embedding_size).to(device)
@@ -600,7 +600,7 @@ def train_model_set_func(features_folder, features_csv, clades_info, true_dist_m
         # NEED TO CHECK IF FILE EXISTS
         # Not sure if I need to redefine to get rid of DataParallel
         if use_fsw:
-            model = models.NeuralNetFSW(k, base_dim, fswout_dim, hidden_size_fc1, embedding_size)
+            model = models.NeuralNetFSW(input_size-1, base_dim, fswout_dim, hidden_size_fc1, embedding_size)
         else:
             model = models.NeuralNet(input_size, hidden_size_fc1, embedding_size)
         state = torch.load(os.path.join(model_filepath, "model_subtree_{}.ckpt".format(c)))
