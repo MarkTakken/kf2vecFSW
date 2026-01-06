@@ -61,7 +61,7 @@ class NeuralNetFSW(nn.Module):
         kmers = X[...,:-1].long()
         weights = X[...,-1]
         base_embed = self.lookup[kmers].view(kmers.shape[0], kmers.shape[1], -1)
-        fsw_embed = self.fsw(base_embed, weights)
+        fsw_embed = self.fsw(base_embed, weights, max_parallel_slices=1)
         out = self.fc1(fsw_embed)
         out = self.relu(out)
         out = self.fc2(out)
