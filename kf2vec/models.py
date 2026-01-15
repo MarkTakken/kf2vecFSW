@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.init as init
 import torch.nn.functional as F
 from fswlib import FSWEmbedding
 #import torchvision
@@ -48,6 +49,7 @@ class NeuralNet(nn.Module):
         
         return out
 
+"""
 class NeuralNetFSW(nn.Module):
     def __init__(self, k, base_dim, fswout_dim, hidden_size, finalout_dim):
         super(NeuralNetFSW, self).__init__()
@@ -62,6 +64,47 @@ class NeuralNetFSW(nn.Module):
         weights = X[...,-1]
         base_embed = self.lookup[kmers].view(kmers.shape[0], kmers.shape[1], -1)
         fsw_embed = self.fsw(base_embed, weights, max_parallel_slices=1)
+        out = self.fc1(fsw_embed)
+        out = self.relu(out)
+        out = self.fc2(out)
+        return out
+"""
+
+class NeuralNetFSW(nn.Module):
+    def __init__(self, k, base_dim, fswout_dim, hidden_size, finalout_dim):
+        super(NeuralNetFSW, self).__init__()
+        
+        # 1. Lookup Table: Orthogonal Initialization
+        # Since base_dim is small (4), this guarantees that A, C, G, and T 
+        # start as mathematically distinct vectors with unit variance.
+        self.lookup = nn.Parameter(torch.empty(4, base_dim))
+        init.orthogonal_(self.lookup)
+        
+        # 2. Linear Layers & Activation
+        self.fc1 = nn.Linear(fswout_dim, hidden_size)
+        self.relu = nn.ReLU() # If you switch to LeakyReLU, change init below
+        self.fc2 = nn.Linear(hidden_size, finalout_dim)
+        
+        # 3. Weight Initialization
+        # FC1: Kaiming Normal (accounts for ReLU "killing" half the variance)
+        init.kaiming_normal_(self.fc1.weight, mode='fan_in', nonlinearity='relu')
+        
+        # FC2: Xavier Normal (Output layer is linear/symmetric, so Xavier is safe)
+        init.xavier_normal_(self.fc2.weight)
+        
+        # Biases: Initialize to small constant or zero
+        init.constant_(self.fc1.bias, 0.01)
+        init.constant_(self.fc2.bias, 0)
+
+        # FSW Layer (Custom)
+        self.fsw = FSWEmbedding(d_in=k*base_dim, d_out=fswout_dim, 
+                                frequency_init="even", minimize_slice_coherence=True)
+
+    def forward(self, X):
+        kmers = X[...,:-1].long()
+        weights = X[...,-1]
+        base_embed = self.lookup[kmers].view(kmers.shape[0], kmers.shape[1], -1)
+        fsw_embed = self.fsw(base_embed, weights)
         out = self.fc1(fsw_embed)
         out = self.relu(out)
         out = self.fc2(out)
