@@ -88,7 +88,7 @@ class NeuralNetFSW(nn.Module):
         # 3. Weight Initialization
         # FC1: Kaiming Normal (accounts for ReLU "killing" half the variance)
         # init.kaiming_normal_(self.fc1.weight, mode='fan_in', nonlinearity='relu')
-        init.xavier_normal_(self.fc1.weight, gain=torch.sqrt(2))
+        init.xavier_normal_(self.fc1.weight, gain=1.414)
         
         # FC2: Xavier Normal (Output layer is linear/symmetric, so Xavier is safe)
         init.xavier_normal_(self.fc2.weight)
